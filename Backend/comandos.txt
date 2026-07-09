@@ -1,0 +1,13 @@
+#Clonar repositorio
+git clone https://github.com/usuario/repositorio.git
+
+#Ver el estado de los archivos
+git status
+
+#Actualizar copia local
+git pull origin main
+git pull origin master
+
+#Encender el servidor
+uvicorn main:app --reload
+
