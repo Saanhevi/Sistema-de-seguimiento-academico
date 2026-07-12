@@ -3,3 +3,9 @@ from pydantic import BaseModel, EmailStr
 class LoginRequest(BaseModel):
     correo: EmailStr
     password: str
+
+class TOkenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    rol: str
+    nombres: str
