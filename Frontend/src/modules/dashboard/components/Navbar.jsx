@@ -8,7 +8,7 @@ export default function Navbar() {
 
         <nav className="nav">
 
-            <a href="#" className="active">
+            <a href="#" className="active" onClick={(e) => e.preventDefault()}>
 
                 <svg
                     width="15"

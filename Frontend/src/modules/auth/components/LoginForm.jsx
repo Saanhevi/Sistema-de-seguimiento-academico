@@ -22,7 +22,7 @@ export default function LoginForm() {
 
             });
 
-            console.log(response);
+            if (import.meta.env.DEV) console.log(response);
 
             authLogin(response.user);
 
