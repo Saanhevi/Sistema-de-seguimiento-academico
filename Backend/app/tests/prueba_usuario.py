@@ -9,4 +9,4 @@ with SessionLocal() as session:
     
     print(f"Se encontraron {len(resultados)} resultados")
     for resultado in resultados: 
-        print(resultado)
+        print(resultado) 

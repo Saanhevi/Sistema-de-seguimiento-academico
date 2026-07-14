@@ -4,10 +4,18 @@ git clone https://github.com/usuario/repositorio.git
 #Ver el estado de los archivos
 git status
 
+#Descargar todas las librerías de requirements.txt
+pip install -r requirements.txt
+
+#Crear entorno virtual
+python -m venv .venv
+
 #Actualizar copia local
 git pull origin main
 git pull origin master
 
 #Encender el servidor
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 
+#clave Postgre
+clave123
