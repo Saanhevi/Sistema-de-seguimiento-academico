@@ -46,7 +46,8 @@ class AuthService:
                 "access_token": token_real,
                 "token_type": "bearer",
                 "rol": user.rol,
-                "nombres": user.nombres
+                "nombres": user.nombres,
+                "apellidos": user.apellidos
             }
 
 # def credentials_verification(credentials: LoginRequest):

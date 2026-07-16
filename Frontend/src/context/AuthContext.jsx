@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(stored?.user ?? null);
     const [token, setToken] = useState(stored?.token ?? null);
 
-    const login = ({ access_token, rol, nombres }) => {
-        const userData = { rol, nombres };
+    const login = ({ access_token, rol, nombres, apellidos }) => {
+        const userData = { rol, nombres, apellidos };
         setUser(userData);
         setToken(access_token);
         setStoredAuth({ user: userData, token: access_token });

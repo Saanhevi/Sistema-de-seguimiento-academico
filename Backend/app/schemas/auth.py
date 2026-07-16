@@ -10,3 +10,4 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     rol: str
     nombres: str
+    apellidos: str
