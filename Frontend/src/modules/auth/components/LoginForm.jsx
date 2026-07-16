@@ -24,7 +24,7 @@ export default function LoginForm() {
 
             if (import.meta.env.DEV) console.log(response);
 
-            authLogin(response.user);
+            authLogin(response);
 
         } catch (error) {
 

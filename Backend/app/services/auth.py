@@ -1,5 +1,5 @@
 #Aquí va toda la lógica del sistema
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.schemas.auth import LoginRequest
 from app.models.usuario import Usuario
@@ -21,7 +21,7 @@ class AuthService:
             user = self.repositorio.buscar_por_correo(credentials.correo)
             #user = db.query(Usuario).filter(Usuario.correo==credentials.correo).first()
             if not user:
-                raise HTTPException()(
+                raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Correo o contraseña incorrectos!"
                 )

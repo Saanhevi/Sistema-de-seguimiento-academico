@@ -1,23 +1,33 @@
 import { createContext, useContext, useState } from "react";
+import { getStoredAuth, setStoredAuth, clearStoredAuth } from "../utils/authStorage";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
 
-    const [user, setUser] = useState(null);
+    const stored = getStoredAuth();
 
-    const login = (userData) => {
+    const [user, setUser] = useState(stored?.user ?? null);
+    const [token, setToken] = useState(stored?.token ?? null);
+
+    const login = ({ access_token, rol, nombres }) => {
+        const userData = { rol, nombres };
         setUser(userData);
+        setToken(access_token);
+        setStoredAuth({ user: userData, token: access_token });
     };
 
     const logout = () => {
         setUser(null);
+        setToken(null);
+        clearStoredAuth();
     };
 
     return (
         <AuthContext.Provider
             value={{
                 user,
+                token,
                 login,
                 logout
             }}
