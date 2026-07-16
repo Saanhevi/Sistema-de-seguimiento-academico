@@ -276,3 +276,30 @@ body {
 .gs-risk  { background: var(--alert-soft); color: var(--alert); }
 .gs-warn  { background: var(--warn-soft); color: #92600A; }
 
+.logout-btn{
+
+  background: var(--teal-brand);
+
+  color:white;
+
+  border:none;
+
+  padding:10px 18px;
+
+  border-radius:8px;
+
+  cursor:pointer;
+
+  font-size:13px;
+
+  font-weight:600;
+
+  transition:.2s;
+
+}
+
+.logout-btn:hover{
+
+  background:var(--teal-brand-dk);
+
+}
