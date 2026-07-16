@@ -10,7 +10,80 @@ Sistema de Gestión Académica para instituciones educativas. Centraliza la gest
 
 ---
 
-# ⚙️ Instalación y Puesta en Marcha (local)
+# 🐳 Instalación y Puesta en Marcha con Docker Compose (recomendado)
+
+Levanta base de datos, backend y frontend con un solo comando, sin instalar Python, Node ni PostgreSQL en tu máquina.
+
+## Requisitos previos
+
+- [Docker](https://docs.docker.com/get-docker/) con Docker Compose.
+  - **Windows / macOS:** instala [Docker Desktop](https://www.docker.com/products/docker-desktop/) (incluye Docker Compose). En Windows se recomienda el backend WSL2 y dejar Docker Desktop abierto antes de ejecutar los comandos.
+  - **Linux:** Docker Engine + el plugin `docker-compose-plugin`.
+
+## 1. Clonar el repositorio
+
+**macOS / Linux (bash):**
+
+```bash
+git clone <url-del-repositorio>
+cd Sistema-de-seguimiento-academico
+```
+
+**Windows (PowerShell o CMD):**
+
+```powershell
+git clone <url-del-repositorio>
+cd Sistema-de-seguimiento-academico
+```
+
+## 2. Levantar los servicios
+
+El comando de Docker Compose es idéntico en Windows, macOS y Linux (bash, PowerShell o CMD). Ejecútalo desde la raíz del proyecto, donde está `docker-compose.yml`:
+
+```bash
+docker compose up -d --build
+```
+
+Esto levanta:
+
+| Servicio | URL | Notas |
+|---|---|---|
+| Frontend | http://localhost:5173 | Vite con hot-reload (código montado desde `./Frontend`) |
+| Backend | http://localhost:8000 | Uvicorn con `--reload` (código montado desde `./Backend`), docs en `/docs` |
+| Base de datos | `localhost:5433` | Postgres, base `gestion_academica`, usuario/contraseña `postgres`/`postgres`. `Database/schemas.sql` se aplica automáticamente la primera vez que se crea el volumen. |
+
+> Si ya tienes Postgres corriendo localmente en el puerto 5432, no hay conflicto: el contenedor de la base de datos se publica en el puerto **5433** del host (por dentro de Docker sigue siendo `db:5432`).
+
+## 3. Crear usuarios de prueba (solo si el proyecto es nuevo)
+
+El volumen de la base de datos queda vacío la primera vez que levantas el proyecto (o después de un `docker compose down -v`). Para poder iniciar sesión, crea los usuarios de prueba dentro del contenedor:
+
+```bash
+docker compose run --rm seed
+```
+
+Mismo comando en Windows (PowerShell/CMD), macOS o Linux. Esto crea (si aún no existen):
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Docente | `profesor_real@colegio.edu.co` | `clave123` |
+| Administrador | `admin_real@colegio.edu.co` | `admin123` |
+
+> El script es idempotente: si el proyecto ya tenía datos de una ejecución anterior, lo omite sin error. No hace falta volver a correrlo en cada `docker compose up`, solo cuando el proyecto es nuevo o reiniciaste el volumen con `-v`.
+
+## Comandos útiles
+
+```bash
+docker compose logs -f backend    # logs de un servicio
+docker compose down               # detener y eliminar contenedores (conserva los datos de la BD)
+docker compose down -v            # además borra el volumen de la base de datos (el próximo `up` requiere volver a correr el seed)
+```
+
+> Las credenciales (`SECRET_KEY`, contraseña de Postgres, etc.) están fijadas como valores de desarrollo directamente en `docker-compose.yml`. No están pensadas para producción.
+
+---
+
+# ⚙️ Instalación y Puesta en Marcha manual (sin Docker)
 
 ## Requisitos previos
 

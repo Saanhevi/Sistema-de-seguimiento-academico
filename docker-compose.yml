@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gestion_academica
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # POSTGRES_DB ya crea la base de datos; solo aplicamos el esquema de tablas.
+      - ./Database/schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gestion_academica"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./Backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/gestion_academica
+      SECRET_KEY: dev_secret_key_local_only
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Backend:/app
+
+  frontend:
+    build: ./Frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+
+  # Crea los usuarios de prueba (docente + administrador) con contraseñas hasheadas.
+  # No corre con `docker compose up`; se ejecuta a demanda:
+  #   docker compose run --rm seed
+  seed:
+    build: ./Backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/gestion_academica
+      SECRET_KEY: dev_secret_key_local_only
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+    volumes:
+      - ./Backend:/app
+    command: ["python", "crear_usuario_test.py"]
+    profiles:
+      - seed
+
+volumes:
+  db_data:
