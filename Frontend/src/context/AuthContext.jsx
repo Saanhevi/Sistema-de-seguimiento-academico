@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import { getStoredAuth, setStoredAuth, clearStoredAuth } from "../utils/authStorage";
+import { crearUsuario } from "../models/Usuario";
 
 const AuthContext = createContext();
 
@@ -11,7 +12,7 @@ export function AuthProvider({ children }) {
     const [token, setToken] = useState(stored?.token ?? null);
 
     const login = ({ access_token, rol, nombres, apellidos }) => {
-        const userData = { rol, nombres, apellidos };
+        const userData = crearUsuario({ rol, nombres, apellidos });
         setUser(userData);
         setToken(access_token);
         setStoredAuth({ user: userData, token: access_token });
