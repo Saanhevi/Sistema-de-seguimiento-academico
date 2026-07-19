@@ -1,12 +1,20 @@
 // eslint-disable-next-line no-unused-vars
 import React from 'react';
-import Greeting from "../components/Greeting";
+import { Outlet, useLocation } from 'react-router-dom';
+import Greeting from "../../components/Greeting";
 
 // PortalDocente: componente funcional para docentes que muestra
 // métricas clave, secciones activas, distribución de notas y tareas
 // pendientes. Actualmente es una vista estática, pensada para
 // ser alimentada más adelante con datos reales desde props o contexto.
 export default function PortalDocente() {
+  const location = useLocation();
+  const isHomeView = location.pathname === '/dashboard/docente';
+
+  if (!isHomeView) {
+    return <Outlet />;
+  }
+
   return (
     <>
 
@@ -151,6 +159,7 @@ export default function PortalDocente() {
             </div>
           </div>
         </div>
+
       </main>
     </>
   );
