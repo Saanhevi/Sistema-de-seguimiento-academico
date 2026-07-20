@@ -1,0 +1,26 @@
+**Historias de usuario**
+- Como estudiante o profesor, quiero iniciar sesión en el sistema, para acceder a las funcionalidades correspondientes a mi rol.
+- Como estudiante, quiero crear una cuenta utilizando mi correo, nombre y contraseña, para acceder al sistema y consultar mi información académica.
+- Como estudiante, quiero cambiar la contraseña de mi cuenta, para mantener segura mi información personal.
+- Como profesor, quiero añadir estudiantes a mi materia, para gestionar correctamente los alumnos que la cursan.
+- Como administrador del colegio, quiero bloquear a los profesores la posibilidad de subir, modificar o eliminar notas de un corte finalizado, para garantizar la integridad de las calificaciones.
+- Como administrador del colegio, quiero bloquear a los profesores la posibilidad de subir, modificar o eliminar notas de un año escolar finalizado, para preservar el historial académico.
+- Como profesor, quiero cargar notas para el periodo académico actual, para evaluar el desempeño de los estudiantes.
+- Como profesor, quiero modificar las notas del periodo actual, para corregir errores o actualizar evaluaciones.
+- Como profesor, quiero que el sistema calcule automáticamente el promedio de cada estudiante en una materia, para conocer su rendimiento académico.
+- Como profesor, quiero que el sistema calcule automáticamente el promedio grupal de una materia, para analizar el desempeño general del curso.
+- Como profesor, quiero eliminar notas del periodo actual, para corregir registros erróneos o duplicados.
+- Como administrador del colegio, quiero relacionar las asignaturas con los grados en los que se cursan, para organizar correctamente la estructura académica.
+- Como profesor, quiero asignar estudiantes a un grado académico, para mantener actualizada la organización de los grupos.
+- Como administrador del colegio, quiero que el sistema almacene las calificaciones por periodo y año escolar, para conservar el historial académico de los estudiantes.
+- Como administrador del colegio, quiero eliminar estudiantes que se han retirado de la institución, para mantener actualizada la base de datos.
+- Como administrador del colegio, quiero agregar nuevos estudiantes al sistema, para gestionar su información académica desde su ingreso.
+- Como administrador del colegio, quiero eliminar profesores que se han retirado de la institución y revocar su acceso al sistema, para garantizar la seguridad de la plataforma.
+- Como administrador del colegio, quiero agregar nuevos profesores al sistema, para permitirles gestionar sus asignaturas y estudiantes.
+- Como estudiante, quiero consultar mis calificaciones mostrando la materia, el profesor y las calificaciones obtenidas, para conocer mi desempeño académico.
+- Como estudiante, quiero consultar el porcentaje, nota, comentario, nombre de la entrega y estudiante asociado a cada calificación, para comprender el detalle de mis evaluaciones.
+- Como profesor, quiero importar notas desde un archivo Excel, para registrar calificaciones de forma masiva y eficiente.
+- Como profesor, quiero registrar inasistencias de los estudiantes, para llevar un control de asistencia de mis clases.
+- Como profesor, quiero modificar las inasistencias registradas, para corregir errores o actualizar información.
+- Como profesor, quiero eliminar registros de inasistencias, para corregir datos ingresados incorrectamente.
+- Como estudiante, quiero consultar mis inasistencias registradas, para conocer mi estado de asistencia.
