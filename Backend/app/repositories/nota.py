@@ -7,22 +7,20 @@ class NotaRepository:
     def __init__(self, session):
         self.session = session
 
-    def crear(self, nota: Nota):
+    def agregar(self, nota: Nota):
+        # No hace commit: el llamador controla el límite de la transacción
+        # (necesario para que carga-masiva confirme todo el lote en un solo commit)
         self.session.add(nota)
-        self.session.commit()
-        self.session.refresh(nota)
+        self.session.flush()
         return nota
 
-    def actualizar(self, nota: Nota):
-        self.session.commit()
-        self.session.refresh(nota)
-        return nota
-
-    def listar(self, id_actividad=None):
+    def listar(self, id_actividad=None, id_estudiante=None):
         query = select(Nota)
 
         if id_actividad is not None:
             query = query.where(Nota.id_actividad == id_actividad)
+        if id_estudiante is not None:
+            query = query.where(Nota.id_estudiante == id_estudiante)
 
         return self.session.execute(query).scalars().all()
 
