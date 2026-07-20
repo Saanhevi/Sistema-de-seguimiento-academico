@@ -16,7 +16,7 @@ class SeccionPorcentaje(Base):
 
     nombre_seccion: Mapped[str] = mapped_column(String(50))
 
-    porcentaje: Mapped[float] = mapped_column(Numeric(5, 2))
+    porcentaje: Mapped[float] = mapped_column(Numeric(5, 2, asdecimal=False))
 
     id_curso: Mapped[int] = mapped_column(ForeignKey("curso.id_curso"))
 

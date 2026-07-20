@@ -18,7 +18,7 @@ class Nota(Base):
 
     id_estudiante: Mapped[int] = mapped_column(ForeignKey("estudiante.id_estudiante"))
 
-    calificacion: Mapped[float] = mapped_column(Numeric(3, 2))
+    calificacion: Mapped[float] = mapped_column(Numeric(3, 2, asdecimal=False))
 
     comentario: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
