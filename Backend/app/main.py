@@ -5,6 +5,7 @@ from app.routers.auth import router as auth_router #importamos el router de aute
 from app.routers.curso import router as curso_router
 from app.routers.asistencia import router as asistencia_router
 from app.routers.docente import router as docente_router
+from app.routers.calificacion import router as calificacion_router
 from app.core.dependencies import require_role #TODO(rbac): quitar junto con /api/whoami si ya no se necesita
 
 app = FastAPI(
@@ -27,6 +28,7 @@ app.include_router(auth_router) #incluimos el router de autenticación en la apl
 app.include_router(curso_router)
 app.include_router(asistencia_router)
 app.include_router(docente_router)
+app.include_router(calificacion_router)
 
 @app.get("/")
 def read_root():

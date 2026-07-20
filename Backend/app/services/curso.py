@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.curso import Curso
@@ -26,10 +27,21 @@ class CursoService:
         self.curso_repo = CursoRepository(session)
         self.matricula_repo = MatriculaRepository(session)
 
-    def crear_grado(self, nombre: str) -> Grado:
+    def _validar_nombre(self, nombre: str, campo: str) -> str:
         nombre_limpio = (nombre or "").strip()
         if not nombre_limpio:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre del grado no puede estar vacío")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"El {campo} no puede estar vacío")
+        return nombre_limpio
+
+    def _validar_anio(self, anio: int) -> int:
+        if not isinstance(anio, int) or isinstance(anio, bool):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El año debe ser un número entero")
+        if anio <= 0 or anio > 2100:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El año no es válido")
+        return anio
+
+    def crear_grado(self, nombre: str) -> Grado:
+        nombre_limpio = self._validar_nombre(nombre, "nombre del grado")
 
         grado = Grado(nombre=nombre_limpio)
         return self.grado_repo.crear(grado)
@@ -38,9 +50,7 @@ class CursoService:
         return self.grado_repo.listar()
 
     def crear_materia(self, nombre: str) -> Materia:
-        nombre_limpio = (nombre or "").strip()
-        if not nombre_limpio:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre de la materia no puede estar vacío")
+        nombre_limpio = self._validar_nombre(nombre, "nombre de la materia")
 
         materia = Materia(nombre=nombre_limpio)
         return self.materia_repo.crear(materia)
@@ -49,21 +59,21 @@ class CursoService:
         return self.materia_repo.listar()
 
     def crear_periodo(self, nombre: str, anio: int, estado: str) -> PeriodoAcademico:
-        nombre_limpio = (nombre or "").strip()
-        if not nombre_limpio:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre del periodo no puede estar vacío")
-        if not isinstance(anio, int):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El año debe ser un número entero")
+        nombre_limpio = self._validar_nombre(nombre, "nombre del periodo")
+        anio_valido = self._validar_anio(anio)
         if estado not in {"Abierto", "Cerrado"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El estado debe ser Abierto o Cerrado")
 
-        periodo = PeriodoAcademico(nombre=nombre_limpio, anio=anio, estado=estado)
+        periodo = PeriodoAcademico(nombre=nombre_limpio, anio=anio_valido, estado=estado)
         return self.periodo_repo.crear(periodo)
 
     def listar_periodos(self) -> list[PeriodoAcademico]:
         return self.periodo_repo.listar()
 
-    def crear_curso(self, id_docente: int, id_grado: int, id_materia: int, id_periodo: int) -> Curso:
+    def crear_curso(self, id_docente: int, id_grado: int, id_materia: int, id_periodo: int, usuario_actual=None) -> Curso:
+        if usuario_actual is not None and usuario_actual.rol == "Docente" and usuario_actual.id_usuario != id_docente:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para asignar un curso a otro docente")
+
         docente = self.session.get(Docente, id_docente)
         if not docente:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Docente no encontrado")
@@ -105,7 +115,10 @@ class CursoService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso no encontrado")
         return curso
 
-    def crear_matricula(self, id_estudiante: int, id_grado: int, anio: int) -> Matricula:
+    def crear_matricula(self, id_estudiante: int, id_grado: int, anio: int, usuario_actual=None) -> Matricula:
+        if usuario_actual is not None and usuario_actual.rol != "Administrador":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los administradores pueden crear matrículas")
+
         estudiante = self.session.get(Estudiante, id_estudiante)
         if not estudiante:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estudiante no encontrado")
@@ -133,24 +146,28 @@ class CursoService:
         if not grado:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grado no encontrado")
 
-        if anio is None:
-            matriculas = self.matricula_repo.listar(id_grado=id_grado)
-        else:
-            matriculas = self.matricula_repo.listar(id_grado=id_grado, anio=anio)
+        query = (
+            select(
+                Matricula.id_estudiante,
+                Usuario.nombres,
+                Usuario.apellidos,
+                Usuario.correo,
+            )
+            .join(Estudiante, Estudiante.id_estudiante == Matricula.id_estudiante)
+            .join(Usuario, Usuario.id_usuario == Estudiante.id_estudiante)
+            .where(Matricula.id_grado == id_grado)
+        )
 
-        resultado = []
-        for matricula in matriculas:
-            estudiante = self.session.get(Estudiante, matricula.id_estudiante)
-            usuario = None
-            if estudiante is not None:
-                usuario = self.session.get(Usuario, estudiante.id_estudiante)
-            if usuario is not None:
-                resultado.append(
-                    {
-                        "id_estudiante": estudiante.id_estudiante,
-                        "nombre": usuario.nombres,
-                        "apellido": usuario.apellidos,
-                        "correo": usuario.correo,
-                    }
-                )
-        return resultado
+        if anio is not None:
+            query = query.where(Matricula.anio == anio)
+
+        rows = self.session.execute(query).all()
+        return [
+            {
+                "id_estudiante": row.id_estudiante,
+                "nombre": row.nombres,
+                "apellido": row.apellidos,
+                "correo": row.correo,
+            }
+            for row in rows
+        ]

@@ -8,10 +8,14 @@ class MatriculaRepository:
         self.session = session
 
     def crear(self, matricula: Matricula):
-        self.session.add(matricula)
-        self.session.commit()
-        self.session.refresh(matricula)
-        return matricula
+        try:
+            self.session.add(matricula)
+            self.session.commit()
+            self.session.refresh(matricula)
+            return matricula
+        except Exception:
+            self.session.rollback()
+            raise
 
     def listar(self, id_grado=None, anio=None):
         query = select(Matricula)
