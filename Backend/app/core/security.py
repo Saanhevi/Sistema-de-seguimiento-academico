@@ -35,3 +35,19 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
     # 5. Devolvemos el token encriptado como un texto plano largo
     return encoded_jwt
+
+def decode_access_token(token: str) -> dict:
+    """
+    Decodifica y valida un JWT firmado con la SECRET_KEY y el ALGORITHM de config.py.
+    Devuelve el payload (claims) si el token es válido.
+    """
+    try:
+        # 1. Verificamos la firma y decodificamos los claims ("sub", "rol", "exp", etc.)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        # El token es válido pero ya venció: la capa de dependencias decide cómo responder
+        raise
+    except jwt.InvalidTokenError:
+        # Firma inválida, formato corrupto, algoritmo no soportado, etc.
+        raise
