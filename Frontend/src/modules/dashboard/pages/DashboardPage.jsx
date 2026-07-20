@@ -1,27 +1,18 @@
-import { useAuth } from "../../../context/AuthContext";
+//import { useAuth } from "../../../context/AuthContext";
 
 import Header from "../components/Header";
 import Navbar from "../components/Navbar";
-import PortalDocente from "./PortalDocente";
-import PortalEstudiantil from "./PortalEstudiantil";
+import { Outlet } from "react-router-dom";
 
 export default function DashboardPage() {
-
-    const { user } = useAuth();
-    const isDocente = user?.rol === "Docente";
-
     return (
-
         <>
-
             <Header />
-
             <Navbar />
 
-            {isDocente ? <PortalDocente /> : <PortalEstudiantil />}
-
+            <main>
+                <Outlet />
+            </main>
         </>
-
     );
-
 }

@@ -59,7 +59,8 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: "60"
     volumes:
       - ./Backend:/app
-    command: ["python", "crear_usuario_test.py"]
+    working_dir: /app
+    command: ["python", "-m", "app.tests.crear_usuario_test"]
     profiles:
       - seed
 
