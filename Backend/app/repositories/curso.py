@@ -8,10 +8,14 @@ class CursoRepository:
         self.session = session
 
     def crear(self, curso: Curso):
-        self.session.add(curso)
-        self.session.commit()
-        self.session.refresh(curso)
-        return curso
+        try:
+            self.session.add(curso)
+            self.session.commit()
+            self.session.refresh(curso)
+            return curso
+        except Exception:
+            self.session.rollback()
+            raise
 
     def listar(self, id_docente=None, id_grado=None, id_periodo=None):
         query = select(Curso)

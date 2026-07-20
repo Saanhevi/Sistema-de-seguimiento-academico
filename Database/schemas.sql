@@ -79,7 +79,9 @@ CREATE TABLE IF NOT EXISTS Matricula (
         REFERENCES Estudiante(id_estudiante),
     
     FOREIGN KEY (id_grado) 
-        REFERENCES Grado(id_grado)
+        REFERENCES Grado(id_grado),
+
+    UNIQUE (id_estudiante, anio)
 );
 
 CREATE TABLE IF NOT EXISTS PeriodoAcademico(
@@ -109,8 +111,9 @@ CREATE TABLE IF NOT EXISTS Curso (
         REFERENCES Materia(id_materia),
 
     FOREIGN KEY (id_periodo)
-        REFERENCES PeriodoAcademico(id_periodo)
+        REFERENCES PeriodoAcademico(id_periodo),
 
+    UNIQUE (id_docente, id_grado, id_materia, id_periodo)
 );
 
 CREATE TABLE IF NOT EXISTS Alerta (

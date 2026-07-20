@@ -79,6 +79,14 @@ docker compose down               # detener y eliminar contenedores (conserva lo
 docker compose down -v            # además borra el volumen de la base de datos (el próximo `up` requiere volver a correr el seed)
 ```
 
+### Notas de integridad del módulo académico
+
+El esquema de base de datos incluye ahora restricciones de unicidad para evitar inconsistencias en el módulo de cursos y matrículas:
+
+- No se permite crear dos cursos con la misma combinación de docente, grado, materia y periodo.
+- No se permite matricular dos veces al mismo estudiante en el mismo año.
+- El backend también valida estas reglas en el servicio antes de guardar, para protegerse frente a condiciones de carrera en solicitudes simultáneas.
+
 > Las credenciales (`SECRET_KEY`, contraseña de Postgres, etc.) están fijadas como valores de desarrollo directamente en `docker-compose.yml`. No están pensadas para producción.
 
 ---
