@@ -77,3 +77,18 @@ def get_current_user(
             )
 
     return usuario
+
+def require_role(*roles_permitidos: str):
+    """
+    Dependency factory para proteger endpoints por rol. Uso en otro router:
+        Depends(require_role("Administrador", "Docente"))
+    Lanza HTTPException 403 si el rol del usuario actual no está en roles_permitidos.
+    """
+    def _verificar(usuario = Depends(get_current_user)):
+        if usuario.rol not in roles_permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para esta acción"
+            )
+        return usuario
+    return _verificar
