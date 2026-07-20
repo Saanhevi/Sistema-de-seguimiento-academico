@@ -1,0 +1,349 @@
+/* Styles for EstudianteAsignaturas view */
+.ea-main {
+  max-width: 1180px;
+  margin: 24px auto 40px;
+  padding: 0 20px 40px;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.ea-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.ea-eyebrow {
+  display: inline-flex;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ea-hero h1 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ea-hero p {
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+.ea-hero-stat {
+  min-width: 210px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.ea-hero-stat span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-light);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ea-hero-stat strong {
+  display: block;
+  margin: 6px 0 4px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--teal-brand-dk);
+}
+
+.ea-hero-stat small {
+  color: var(--teal-brand);
+  font-size: 13px;
+}
+
+.ea-summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.ea-summary-card {
+  min-width: 136px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  box-shadow: var(--shadow-card);
+}
+
+.ea-summary-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--teal-primary);
+  box-shadow: 0 10px 24px rgba(14, 217, 181, 0.16);
+}
+
+.ea-summary-card.active {
+  border-color: var(--teal-brand-dk);
+  background: var(--ok-soft);
+  box-shadow: 0 10px 24px rgba(29, 127, 131, 0.15);
+}
+
+.ea-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ea-card-value {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ea-definitiva {
+  margin-left: auto;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--teal-brand-dk) 0%, var(--teal-primary) 100%);
+  color: var(--bg-card);
+  text-align: center;
+  box-shadow: 0 14px 28px rgba(29, 127, 131, 0.2);
+}
+
+.ea-definitiva .ea-card-title {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ea-definitiva .ea-card-value {
+  color: var(--bg-card);
+}
+
+.ea-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ea-matter {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ea-matter-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ea-matter-header:hover {
+  background: var(--bg);
+}
+
+.ea-matter-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ea-matter-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ea-matter-subtitle {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.ea-matter-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ea-matter-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.ea-list-inner {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ea-bimester {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ea-bimester-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  cursor: pointer;
+}
+
+.ea-bimester-header:hover {
+  background: var(--bg);
+}
+
+.ea-bimester-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ea-bimester-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ea-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ea-caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 180ms ease;
+}
+
+.ea-caret.open {
+  transform: rotate(180deg);
+}
+
+.ea-bimester.open {
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.ea-bimester-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.ea-empty {
+  padding: 14px 0 4px;
+  color: var(--ink-light);
+}
+
+.ea-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ea-table th,
+.ea-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+
+.ea-table thead th {
+  color: var(--ink-light);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ea-table tbody tr:hover {
+  background: var(--bg);
+}
+
+.ea-note {
+  display: inline-flex;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .ea-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ea-hero-stat {
+    width: 100%;
+  }
+
+  .ea-summary {
+    gap: 8px;
+  }
+
+  .ea-summary-card {
+    min-width: calc(50% - 8px);
+  }
+
+  .ea-definitiva {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ea-table {
+    font-size: 14px;
+  }
+
+  .ea-matter-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ea-matter-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
