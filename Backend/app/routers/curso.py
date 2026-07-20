@@ -76,7 +76,7 @@ def crear_curso(
     service: CursoService = Depends(get_curso_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    return service.crear_curso(payload.id_docente, payload.id_grado, payload.id_materia, payload.id_periodo)
+    return service.crear_curso(payload.id_docente, payload.id_grado, payload.id_materia, payload.id_periodo, usuario_actual=usuario)
 
 
 @router.get("/cursos", response_model=list[CursoResponse])
@@ -105,7 +105,7 @@ def crear_matricula(
     service: CursoService = Depends(get_curso_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    return service.crear_matricula(payload.id_estudiante, payload.id_grado, payload.anio)
+    return service.crear_matricula(payload.id_estudiante, payload.id_grado, payload.anio, usuario_actual=usuario)
 
 
 @router.get("/matriculas", response_model=list[MatriculaResponse])
