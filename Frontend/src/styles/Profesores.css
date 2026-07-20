@@ -1,0 +1,277 @@
+.profesores-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profesores-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.summary-card h3 {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0 0 8px;
+}
+
+.summary-card strong {
+  font-size: 28px;
+  color: var(--ink);
+}
+
+.summary-card.active-card strong {
+  color: var(--teal-brand-dk);
+}
+
+.summary-card.inactive-card strong {
+  color: var(--warn);
+}
+
+.profesores-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn, .primary-btn, .secondary-btn, .ghost-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-btn {
+  background: var(--bg);
+  color: var(--ink-muted);
+}
+
+.filter-btn.active {
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+}
+
+.primary-btn {
+  background: var(--teal-brand);
+  color: white;
+}
+
+.secondary-btn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.status-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.activar-btn {
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+}
+
+.desactivar-btn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.ghost-btn {
+  background: var(--bg);
+  color: var(--ink-muted);
+}
+
+.profesores-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profesor-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profesor-card__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profesor-card__header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.profesor-card__header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.profesor-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-pill.active {
+  background: var(--ok-soft);
+  color: var(--teal-brand-dk);
+}
+
+.status-pill.inactive {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.meta-text {
+  font-size: 12px;
+  color: var(--ink-light);
+}
+
+.profesor-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 28, 28, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 18px;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: min(620px, 100%);
+  padding: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+.modal-header {
+  margin-bottom: 16px;
+}
+
+.modal-caption {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.profesor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field-full {
+  grid-column: 1 / -1;
+}
+
+.field input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.switch-field {
+  padding-top: 6px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 840px) {
+  .profesores-summary,
+  .profesores-list,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

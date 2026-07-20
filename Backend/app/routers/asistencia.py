@@ -15,15 +15,15 @@ router = APIRouter(
     tags=["Asistencias"],
 )
 
-@router.get(
-    "/cursos/{id_curso}",
-    response_model=list[DiaAsistibleResponse]
-)
-def obtener_dias_asistencia(
-    id_curso: int,
-    service : 
-):
-    pass
+# @router.get(
+#     "/cursos/{id_curso}",
+#     response_model=list[DiaAsistibleResponse]
+# )
+# def obtener_dias_asistencia(
+#     id_curso: int,
+#     service : 
+# ):
+#     pass
 
 @router.post(
     "/cursos/{id_curso}",
