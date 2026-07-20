@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from app.core.dependencies import get_calificacion_service, require_role
 from app.schemas.calificacion import (
+    ID_MAXIMO,
     ActividadEvaluativaCreate,
     ActividadEvaluativaResponse,
     NotaCargaMasivaRequest,
@@ -25,7 +26,7 @@ def crear_seccion(
 
 @router.get("/secciones", response_model=list[SeccionPorcentajeResponse])
 def listar_secciones(
-    id_curso: int | None = None,
+    id_curso: int | None = Query(default=None, gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
@@ -43,7 +44,7 @@ def crear_actividad(
 
 @router.get("/actividades", response_model=list[ActividadEvaluativaResponse])
 def listar_actividades(
-    id_seccion: int | None = None,
+    id_seccion: int | None = Query(default=None, gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
@@ -71,7 +72,7 @@ def crear_nota(
 
 @router.get("/notas", response_model=list[NotaResponse])
 def listar_notas(
-    id_actividad: int | None = None,
+    id_actividad: int | None = Query(default=None, gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
