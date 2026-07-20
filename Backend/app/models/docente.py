@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 #Evitar importaciones circulares
 if TYPE_CHECKING: 
     from app.models.usuario import Usuario
+    from app.models.curso import Curso
     
 #Modelo de la tabla docente en la base de datos
 class Docente(Base):
@@ -16,6 +17,7 @@ class Docente(Base):
     estado : Mapped[str] = mapped_column(String(20))
     
     usuario : Mapped["Usuario"] = relationship(back_populates="rol_docente")
+    cursos: Mapped[list["Curso"]] = relationship(back_populates="docente")
     
     def __repr__(self) -> str:
         return (
