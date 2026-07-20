@@ -8,6 +8,8 @@ from app.models.estudiante import Estudiante
 from app.models.grado import Grado
 from app.models.materia import Materia
 from app.models.periodo_academico import PeriodoAcademico
+from app.models.seccion_porcentaje import SeccionPorcentaje
+from app.models.actividad_evaluativa import ActividadEvaluativa
 from app.repositories.curso import CursoRepository
 from app.services.curso import CursoService
 from app.services.calificacion import CalificacionService
@@ -87,13 +89,23 @@ with SessionLocal() as session:
 
     print(f"Curso de prueba: {curso}")
 
-    # 4. Sección de porcentaje + actividad evaluativa
+    # 4. Sección de porcentaje + actividad evaluativa (se reutilizan si ya existen)
     calificacion_service = CalificacionService(session)
 
-    seccion = calificacion_service.crear_seccion("Quizzes", 30.0, curso.id_curso)
+    seccion = session.query(SeccionPorcentaje).filter(
+        SeccionPorcentaje.id_curso == curso.id_curso, SeccionPorcentaje.nombre_seccion == "Quizzes"
+    ).first()
+    if seccion is None:
+        seccion = calificacion_service.crear_seccion("Quizzes", 30.0, curso.id_curso, docente_usuario)
     print(f"Sección creada: {seccion}")
 
-    actividad = calificacion_service.crear_actividad("Quiz 1 - Fracciones", date(2026, 7, 20), seccion.id_seccion)
+    actividad = session.query(ActividadEvaluativa).filter(
+        ActividadEvaluativa.id_seccion == seccion.id_seccion, ActividadEvaluativa.nombre == "Quiz 1 - Fracciones"
+    ).first()
+    if actividad is None:
+        actividad = calificacion_service.crear_actividad(
+            "Quiz 1 - Fracciones", date(2026, 7, 20), seccion.id_seccion, docente_usuario
+        )
     print(f"Actividad creada: {actividad}")
 
     # 5. Carga masiva de notas para los 3 estudiantes
@@ -102,16 +114,16 @@ with SessionLocal() as session:
         {"id_estudiante": ids_estudiantes[1], "calificacion": 3.2, "comentario": None},
         {"id_estudiante": ids_estudiantes[2], "calificacion": 2.8, "comentario": "Repasar fracciones"},
     ]
-    notas = calificacion_service.cargar_notas_masivo(actividad.id_actividad, notas_iniciales)
+    notas = calificacion_service.cargar_notas_masivo(actividad.id_actividad, notas_iniciales, docente_usuario)
     print(f"Notas cargadas ({len(notas)}):")
     for nota in notas:
         print(f"  {nota}")
 
     # 6. RN-f: volver a cargar una nota para el mismo estudiante+actividad debe actualizar (upsert), no duplicar
     correccion = [{"id_estudiante": ids_estudiantes[0], "calificacion": 4.8, "comentario": "Corregido tras revisión"}]
-    calificacion_service.cargar_notas_masivo(actividad.id_actividad, correccion)
+    calificacion_service.cargar_notas_masivo(actividad.id_actividad, correccion, docente_usuario)
 
-    notas_finales = calificacion_service.listar_notas(id_actividad=actividad.id_actividad)
+    notas_finales = calificacion_service.listar_notas(id_actividad=actividad.id_actividad, usuario=docente_usuario)
     print(f"Notas después del upsert ({len(notas_finales)} — debe seguir siendo {len(notas_iniciales)}):")
     for nota in notas_finales:
         print(f"  {nota}")
