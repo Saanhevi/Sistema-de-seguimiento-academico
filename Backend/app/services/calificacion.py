@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.actividad_evaluativa import ActividadEvaluativa
 from app.models.curso import Curso
+from app.models.estudiante import Estudiante
 from app.models.nota import Nota
 from app.models.seccion_porcentaje import SeccionPorcentaje
 from app.models.usuario import Usuario
@@ -91,9 +92,11 @@ class CalificacionService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La calificación debe estar entre 0.00 y 5.00")
 
     def _validar_estudiante(self, id_estudiante: int) -> None:
-        # RN-e: id_estudiante debe existir y tener rol Estudiante
+        # RN-e: id_estudiante debe existir, tener rol Estudiante y tener fila en Estudiante
+        # (Nota.id_estudiante tiene FK contra estudiante, no contra usuario)
         usuario = self.session.get(Usuario, id_estudiante)
-        if usuario is None or usuario.rol != "Estudiante":
+        estudiante = self.session.get(Estudiante, id_estudiante)
+        if usuario is None or usuario.rol != "Estudiante" or estudiante is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El estudiante debe existir y tener rol Estudiante")
 
     def _validar_periodo_abierto(self, actividad: ActividadEvaluativa) -> None:
