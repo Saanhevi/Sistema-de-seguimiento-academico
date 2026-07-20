@@ -20,7 +20,7 @@ def crear_seccion(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    return service.crear_seccion(payload.nombre_seccion, payload.porcentaje, payload.id_curso)
+    return service.crear_seccion(payload.nombre_seccion, payload.porcentaje, payload.id_curso, usuario)
 
 
 @router.get("/secciones", response_model=list[SeccionPorcentajeResponse])
@@ -38,7 +38,7 @@ def crear_actividad(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    return service.crear_actividad(payload.nombre, payload.fecha, payload.id_seccion)
+    return service.crear_actividad(payload.nombre, payload.fecha, payload.id_seccion, usuario)
 
 
 @router.get("/actividades", response_model=list[ActividadEvaluativaResponse])
@@ -57,7 +57,7 @@ def cargar_notas_masivo(
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
     notas = [item.model_dump() for item in payload.notas]
-    return service.cargar_notas_masivo(payload.id_actividad, notas)
+    return service.cargar_notas_masivo(payload.id_actividad, notas, usuario)
 
 
 @router.post("/notas", response_model=NotaResponse)
@@ -66,7 +66,7 @@ def crear_nota(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    return service.crear_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario)
+    return service.crear_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario, usuario)
 
 
 @router.get("/notas", response_model=list[NotaResponse])
@@ -75,4 +75,4 @@ def listar_notas(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
-    return service.listar_notas(id_actividad=id_actividad)
+    return service.listar_notas(id_actividad=id_actividad, usuario=usuario)
