@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from app.models.historial_asistencia import HistorialAsistencia
     from app.models.curso import Curso
 
+# TODO: Completar este modelo con relaciones reales, constraints y nombres de columnas acordes al esquema.
 class DiaAsistible(Base):
     __tablename__ = "diaasistible"
     id_dia : Mapped[int] = mapped_column(primary_key=True)

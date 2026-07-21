@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.auth import router as auth_router #importamos el router de autenticación
 from app.routers.curso import router as curso_router
-from app.routers.asistencia import router as asistencia_router
+from app.routers.asistencia import router as asistencia_router  # TODO: Sustituir el scaffold por la implementación completa de asistencia.
 from app.routers.docente import router as docente_router
 from app.routers.calificacion import router as calificacion_router
 from app.core.dependencies import require_role #TODO(rbac): quitar junto con /api/whoami si ya no se necesita

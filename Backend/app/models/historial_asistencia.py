@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from app.models.estudiante import Estudiante
     from app.models.dia_asistible import DiaAsistible
 
+# TODO: Corregir la sintaxis de este modelo y completar sus relaciones con DíaAsistible y Estudiante.
 class HistorialAsistencia(Base):
     __tablename__ = "historialasistencia"
     id_dia : Mapped[int] = mapped_column(ForeignKey("diaasistible.id_dia"))
