@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import LoginPage from "../modules/auth/pages/LoginPage";
 import RegisterPage from "../modules/auth/pages/RegisterPage";
 import DashboardPage from "../modules/dashboard/pages/DashboardPage";
+import ChangePasswordPage from "../modules/auth/pages/changePasswordPage";
 import PortalAdmin from "../modules/dashboard/pages/admin/PortalAdmin";
 import { AdminCursos } from "../modules/dashboard/pages/admin/AdminCursos";
 import AdminEstudiantes from "../modules/dashboard/pages/admin/AdminEstudiantes";
@@ -26,6 +27,14 @@ function RutaLogin() {
 function RutaRegistro() {
     const { user } = useAuth();
     return user ? <Navigate to="/dashboard" replace /> : <RegisterPage />;
+}
+
+function RutaCambioPassword() {
+
+    const { user } = useAuth();
+
+    return user ? <Navigate to="/dashboard" replace /> : <ChangePasswordPage />;
+
 }
 
 function RutaDashboard() {
@@ -55,6 +64,7 @@ export default function AppRouter() {
             <Routes>
                 <Route path="/login" element={<RutaLogin />} />
                 <Route path="/registro" element={<RutaRegistro />} />
+                <Route path="/cambiar-password" element={<RutaCambioPassword />} />
                 <Route path="/dashboard" element={<RutaDashboard />}>
                     <Route index element={<RutaDashboardIndex />} />
                     <Route path="admin" element={<PortalAdmin />}>

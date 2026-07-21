@@ -76,12 +76,17 @@ export default function LoginForm() {
 
             </button>
 
-            <p className="login-link">
-                ¿No tienes una cuenta?{" "}
+            <div className="login-links">
+
                 <Link to="/registro">
                     Crear cuenta
                 </Link>
-            </p>
+
+                <Link to="/cambiar-password">
+                    Cambiar contraseña
+                </Link>
+
+            </div>
         </form>
 
     );
