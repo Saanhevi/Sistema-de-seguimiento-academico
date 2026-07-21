@@ -18,5 +18,10 @@ class CrearCuentaEstudiantilRequest(BaseModel):
     correo: EmailStr
     password : str 
 
+class ActualizarPasswordRequest(BaseModel):
+    correo : EmailStr
+    password_anterior : str
+    password_nueva : str
+
 class MensajeResponde(BaseModel):
     mensaje : str 

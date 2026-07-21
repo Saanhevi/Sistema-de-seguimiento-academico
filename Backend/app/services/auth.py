@@ -1,7 +1,7 @@
 #Aquí va toda la lógica del sistema
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from app.schemas.auth import LoginRequest, CrearCuentaEstudiantilRequest
+from app.schemas.auth import LoginRequest, CrearCuentaEstudiantilRequest, ActualizarPasswordRequest
 from app.models.usuario import Usuario
 from app.models.estudiante import Estudiante
 from app.core.security import controlador_contrasena, create_access_token
@@ -85,7 +85,38 @@ class AuthService:
             return {
                 "mensaje" : "Registro Exitoso"
             }
+        
+    def actualizar_contrasena(self, credentials: ActualizarPasswordRequest ):
+        # Verificar si el correo existe 
+        usuario = self.repositorio.buscar_por_correo(credentials.correo)
+        
+        if not usuario: 
+            raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="El correo no existe"
+                )
             
+        # Verificar que la contrasena_actual sea correcta 
+        clave_correcta = controlador_contrasena.verificar_contrasena(credentials.password_anterior, usuario.password_hash)
+        
+        if not clave_correcta:
+            raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Contraseña actual incorrecta!!"
+            )
+        
+        # La contraseña es correcta por lo que se puede cambiar 
+        
+        clave_nueva = controlador_contrasena.hashear(credentials.password_nueva)
+        
+        usuario.password_hash = clave_nueva 
+        
+        self.repositorio.actualizar(usuario)
+        
+        return {
+            "mensaje" : "Actualizacion Completada"
+        }
+         
 # def credentials_verification(credentials: LoginRequest):
 #     # Simulación de base de datos
 #     EMAIL_PRUEBA = "profesor@colegio.com"
