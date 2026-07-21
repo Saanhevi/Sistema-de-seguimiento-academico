@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 import LoginPage from "../modules/auth/pages/LoginPage";
+import RegisterPage from "../modules/auth/pages/RegisterPage";
 import DashboardPage from "../modules/dashboard/pages/DashboardPage";
 import PortalAdmin from "../modules/dashboard/pages/admin/PortalAdmin";
 import { AdminCursos } from "../modules/dashboard/pages/admin/AdminCursos";
@@ -20,6 +21,11 @@ import EstudianteAsignaturas from "../modules/dashboard/pages/estudiante/Estudia
 function RutaLogin() {
     const { user } = useAuth();
     return user ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+}
+
+function RutaRegistro() {
+    const { user } = useAuth();
+    return user ? <Navigate to="/dashboard" replace /> : <RegisterPage />;
 }
 
 function RutaDashboard() {
@@ -48,6 +54,7 @@ export default function AppRouter() {
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<RutaLogin />} />
+                <Route path="/registro" element={<RutaRegistro />} />
                 <Route path="/dashboard" element={<RutaDashboard />}>
                     <Route index element={<RutaDashboardIndex />} />
                     <Route path="admin" element={<PortalAdmin />}>

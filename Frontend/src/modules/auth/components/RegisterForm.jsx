@@ -1,32 +1,40 @@
 import { useState } from "react";
-import { login } from "../services/authService";
-import { useAuth } from "../../../context/AuthContext";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { registrar } from "../services/authService";
 
-export default function LoginForm() {
+export default function RegisterForm() {
 
+    const [nombres, setNombres] = useState("");
+    const [apellidos, setApellidos] = useState("");
     const [correo, setCorreo] = useState("");
     const [password, setPassword] = useState("");
 
-    const { login: authLogin } = useAuth();
+    const  navigate = useNavigate()
 
     const handleSubmit = async (e) => {
+
 
         e.preventDefault();
 
         try {
 
-            const response = await login({
+            await registrar({
 
+                nombres,
+                apellidos,
                 correo,
                 password
 
             });
 
-            if (import.meta.env.DEV) console.log(response);
+            alert("Cuenta creada correctamente.");
 
-            authLogin(response);
+            setNombres("");
+            setApellidos("");
+            setCorreo("");
+            setPassword("");
 
+            navigate("/login")
         } catch (error) {
 
             alert(error.detail);
@@ -41,6 +49,34 @@ export default function LoginForm() {
             className="login-form"
             onSubmit={handleSubmit}
         >
+
+            <label>
+
+                Nombres
+
+                <input
+                    type="text"
+                    value={nombres}
+                    onChange={(e) => setNombres(e.target.value)}
+                    placeholder="Juan"
+                    required
+                />
+
+            </label>
+
+            <label>
+
+                Apellidos
+
+                <input
+                    type="text"
+                    value={apellidos}
+                    onChange={(e) => setApellidos(e.target.value)}
+                    placeholder="Pérez"
+                    required
+                />
+
+            </label>
 
             <label>
 
@@ -72,16 +108,10 @@ export default function LoginForm() {
 
             <button type="submit">
 
-                Iniciar Sesión
+                Crear Cuenta
 
             </button>
 
-            <p className="login-link">
-                ¿No tienes una cuenta?{" "}
-                <Link to="/registro">
-                    Crear cuenta
-                </Link>
-            </p>
         </form>
 
     );
