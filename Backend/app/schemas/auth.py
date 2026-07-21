@@ -11,3 +11,12 @@ class TokenResponse(BaseModel):
     rol: str
     nombres: str
     apellidos: str
+
+class CrearCuentaEstudiantilRequest(BaseModel):
+    nombres : str 
+    apellidos : str 
+    correo: EmailStr
+    password : str 
+
+class MensajeResponde(BaseModel):
+    mensaje : str 

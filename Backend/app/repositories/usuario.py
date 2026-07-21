@@ -24,7 +24,7 @@ class UsuarioRepository:
         
         self.session.refresh(usuario) # Se refresca el objeto usuario para que incluya el id
         return usuario
-    
+            
     def actualizar(self, nuevo_usuario: Usuario):
         # El nuevo usuario es actualizado por el servicio
         self.session.commit()

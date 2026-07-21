@@ -1,16 +1,19 @@
 #Aquí va toda la lógica del sistema
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from app.schemas.auth import LoginRequest
+from app.schemas.auth import LoginRequest, CrearCuentaEstudiantilRequest
 from app.models.usuario import Usuario
+from app.models.estudiante import Estudiante
 from app.core.security import controlador_contrasena, create_access_token
 from app.repositories.usuario import UsuarioRepository
+from app.repositories.estudiante import EstudianteRepository
 
 class AuthService: 
     
     def __init__(self, session: Session, repositorio:UsuarioRepository):
         self.session = session
         self.repositorio = repositorio
+        self.repositorio_estudiante = EstudianteRepository(session)
         
     def autenticar_usuario(self,credentials: LoginRequest) -> dict:
         """
@@ -49,7 +52,40 @@ class AuthService:
                 "nombres": user.nombres,
                 "apellidos": user.apellidos
             }
+            
+    def crear_cuenta_estudiantil(self, credentials: CrearCuentaEstudiantilRequest ) -> dict :
+        with self.session as session :
+            # Verificar que el correo exista 
+            
+            usuario = self.repositorio.buscar_por_correo(credentials.correo)
+            
+            if usuario :
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="El correo ya existe"
+                )
+            
+            # Se crea la contrasena hasheada 
+            password_hash = controlador_contrasena.hashear(credentials.password)
+            
+            usuario = Usuario(            
+                nombres = credentials.nombres,
+                apellidos = credentials.apellidos,
+                correo = credentials.correo,
+                password_hash = password_hash,
+                rol = "Estudiante" 
+        )
+            self.repositorio.crear(usuario)
 
+            estudiante = Estudiante(
+                id_estudiante = usuario.id_usuario,
+                estado = "Activo"
+            )
+            
+            return {
+                "mensaje" : "Registro Exitoso"
+            }
+            
 # def credentials_verification(credentials: LoginRequest):
 #     # Simulación de base de datos
 #     EMAIL_PRUEBA = "profesor@colegio.com"
