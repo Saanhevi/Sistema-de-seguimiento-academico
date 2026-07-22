@@ -1,8 +1,9 @@
-from datetime import date
-from typing import Any
 from sqlalchemy.orm import Session
 from app.schemas.asistencia import AsistenciaRequest
-# TODO: Reemplazar este stub por un servicio real con repositorios, validaciones y reglas de negocio.
+from app.repositories.asistencia import AsistenciaRepository
+from app.repositories.curso import CursoRepository
+from app.models.historial_asistencia import HistorialAsistencia
+
 class AsistenciaService:
     """Servicio temporal para el módulo de asistencia.
 
@@ -12,54 +13,99 @@ class AsistenciaService:
     """
     def __init__(self, session : Session):
         self.session = session
-    
-    def lista_asistencia(self, id_curso, fecha):
-        #Se verifica si hay un dia asistible para tal curso y fecha
-        # Si no se hay se crea 
-        # Si hay entonces se muestra directamente 
-        if id_curso == 2 :
-            return {
-                    "id_dia": 2,
-                    "grado": "string",
-                    "materia": "string",
-                    "fecha": "2026-07-23",
-                    "asistencias": [
-                        {
-                        "id_estudiante": 0,
-                        "nombres": "string",
-                        "apellidos": "string",
-                        "estado": "string"
-                        }, 
-                        {
-                        "id_estudiante": 2,
-                        "nombres": "string",
-                        "apellidos": "string",
-                        "estado": "string"
-                        }
-                    ]
-                }
-        else: 
-            return {
-                    "id_dia": 3,
-                    "grado": "string",
-                    "materia": "string",
-                    "fecha": "2026-07-23",
-                    "asistencias": [
-                        {
-                        "id_estudiante": 0,
-                        "nombres": "string",
-                        "apellidos": "string",
-                        "estado": "string"
-                        }, 
-                        {
-                        "id_estudiante": 2,
-                        "nombres": "string",
-                        "apellidos": "string",
-                        "estado": "string"
-                        }
-                    ]
-                } 
+        self.asistencia_repository = AsistenciaRepository(session)
+        self.curso_repository = CursoRepository(session)
         
+    def lista_asistencia(self, id_curso, fecha):
+        #Se verifica si hay un dia asistible para tal curso y fecha 
+        # Si no existe, se crea automáticamente el día asistible
+        # Si hay entonces se muestra directamente 
+        
+        dia_asistible = self.asistencia_repository.consultar_dia_asistible(id_curso, fecha)
+        curso = self.curso_repository.buscar_por_id(id_curso)
+        grado = curso.grado
+        materia = curso.materia
+        anio = curso.periodo.anio        
+        # Las matriculas del mismo ano del curso
+        matriculas = [
+            m for m in grado.matriculas
+            if m.anio == anio
+        ]
+        
+        
+        asistencias = []
+        if not dia_asistible : 
+            # No hay dia asistible
+            dia_asistible_creado = self.asistencia_repository.crear_dia_asistible(id_curso, fecha)
+            
+            for matricula in matriculas:
+                estudiante = matricula.estudiante
+                id_estudiante = estudiante.id_estudiante
+                nombres = estudiante.usuario.nombres 
+                apellidos = estudiante.usuario.apellidos
+                estado = "Presente"
+                
+                asistencia = {
+                    "id_estudiante" : id_estudiante,
+                    "nombres": nombres,
+                    "apellidos": apellidos,
+                    "estado": estado
+                }
+                
+                asistencias.append(asistencia)
+                
+                historial_asistencia = HistorialAsistencia(
+                    id_dia = dia_asistible_creado.id_dia,
+                    id_estudiante = id_estudiante,
+                    estado = estado
+                )
+                
+                self.session.add(historial_asistencia)
+                            
+            self.session.commit()   
+            return {
+                "id_dia": dia_asistible_creado.id_dia,
+                "grado": grado.nombre,
+                "materia": materia.nombre,
+                "fecha": fecha,
+                "asistencias": asistencias   
+            }
+            
+        else:
+            # Hay un dia asistible 
+            id_dia = dia_asistible.id_dia
+            historial = self.asistencia_repository.obtener_historial(id_dia)
+            
+            # Se hace un diccionario con la clave (id) y el estado
+            estados = {
+                h.id_estudiante : h.estado
+                for h in historial
+            }
+            
+            for matricula in matriculas:
+                estudiante = matricula.estudiante
+                id_estudiante = estudiante.id_estudiante
+                nombres = estudiante.usuario.nombres 
+                apellidos = estudiante.usuario.apellidos
+                
+                asistencia = {
+                    "id_estudiante" :id_estudiante,
+                    "nombres": nombres,
+                    "apellidos": apellidos,
+                    "estado": estados[id_estudiante]
+                }
+                
+                asistencias.append(asistencia)
+                
+            return {
+                    "id_dia": id_dia,
+                    "grado": grado.nombre,
+                    "materia": materia.nombre,
+                    "fecha": fecha,
+                    "asistencias": asistencias
+            }
+        
+
     def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
         return {"mensaje" : "Actualizacion correcta"}
     
