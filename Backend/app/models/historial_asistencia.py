@@ -11,7 +11,7 @@ class HistorialAsistencia(Base):
     __tablename__ = "historialasistencia"
     id_dia : Mapped[int] = mapped_column(ForeignKey("diaasistible.id_dia"))
     id_estudiante : Mapped[int] = mapped_column(ForeignKey("estudiante.id_estudiante"))
-    estado = Mapped[str] = mapped_column(String(20))
+    estado : Mapped[str] = mapped_column(String(20))
     __table_args__ = (
         PrimaryKeyConstraint(
             "id_dia",

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any
 from sqlalchemy.orm import Session
-
+from app.schemas.asistencia import AsistenciaRequest
 # TODO: Reemplazar este stub por un servicio real con repositorios, validaciones y reglas de negocio.
 class AsistenciaService:
     """Servicio temporal para el módulo de asistencia.
@@ -13,25 +13,76 @@ class AsistenciaService:
     def __init__(self, session : Session):
         self.session = session
     
+    def lista_asistencia(self, id_curso, fecha):
+        #Se verifica si hay un dia asistible para tal curso y fecha
+        # Si no se hay se crea 
+        # Si hay entonces se muestra directamente 
+        if id_curso == 2 :
+            return {
+                    "id_dia": 2,
+                    "grado": "string",
+                    "materia": "string",
+                    "fecha": "2026-07-23",
+                    "asistencias": [
+                        {
+                        "id_estudiante": 0,
+                        "nombres": "string",
+                        "apellidos": "string",
+                        "estado": "string"
+                        }, 
+                        {
+                        "id_estudiante": 2,
+                        "nombres": "string",
+                        "apellidos": "string",
+                        "estado": "string"
+                        }
+                    ]
+                }
+        else: 
+            return {
+                    "id_dia": 3,
+                    "grado": "string",
+                    "materia": "string",
+                    "fecha": "2026-07-23",
+                    "asistencias": [
+                        {
+                        "id_estudiante": 0,
+                        "nombres": "string",
+                        "apellidos": "string",
+                        "estado": "string"
+                        }, 
+                        {
+                        "id_estudiante": 2,
+                        "nombres": "string",
+                        "apellidos": "string",
+                        "estado": "string"
+                        }
+                    ]
+                } 
+        
+    def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
+        return {"mensaje" : "Actualizacion correcta"}
     
-    # TODO: Implementar la creación real de días asistibles con validación de curso y fechas.
-    def crear_dia_asistible(self, id_curso: int, request: Any) -> dict[str, Any]:
-        return {
-            "id_dia": 0,
-            "fecha": request.fecha,
-            "id_curso": id_curso,
-        }
-
-    # TODO: Consultar la asistencia registrada para un día concreto desde la base de datos.
-    def obtener_asistencia(self, id_dia: int) -> list[dict[str, Any]]:
-        return []
-
-    # TODO: Implementar el registro real de asistencia y manejar conflictos/duplicados.
-    def registrar_asistencia(self, id_dia: int, requests: list[Any]) -> dict[str, str]:
-        return {
-            "mensaje": f"Asistencia registrada para el día {id_dia} (módulo en desarrollo)",
-        }
-
-    # TODO: Traer el historial real del estudiante desde la tabla de asistencia.
-    def obtener_historial_asistencia(self, id_estudiante: int) -> list[dict[str, Any]]:
-        return []
+    def consultar_asistencias_estudiante(self, id_estudiante):
+        return [
+            {
+                "materia": "Biologia",
+                "fecha": "2026-07-22",
+                "estado": "Ausente"
+            }, 
+            {
+                "materia": "Matematicas",
+                "fecha": "2026-07-22",
+                "estado": "Presente"
+            }
+        ]
+    
+    def historial_dias_curso(self, id_curso):
+        return [
+            {
+                "fecha": "2026-07-22"
+            },            
+            {
+                "fecha": "2026-07-23"
+            }
+        ]
