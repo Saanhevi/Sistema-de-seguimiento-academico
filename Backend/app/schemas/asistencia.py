@@ -1,30 +1,34 @@
 from pydantic import BaseModel 
 from datetime import date 
 
-# TODO: Definir validaciones reales para fechas, estados y contratos de respuesta del módulo de asistencia.
-class CrearDiaAsistibleRequest(BaseModel):
-    fecha: date
+#Necesarios para mostrar la lista de asistencias
+class AsistenciaListaResponse(BaseModel):
+    id_dia: int 
+    grado: str 
+    materia: str 
+    fecha : date 
+    asistencias : list[AsistenciaResponse]
+    
+class AsistenciaResponse(BaseModel):
+    id_estudiante: int 
+    nombres : str 
+    apellidos : str 
+    estado : str 
+    
+# Clase para guardar la asistencia de un estudiante
+class AsistenciaRequest(BaseModel):
+    id_estudiante : int 
+    estado : str 
 
-# TODO: Incluir los campos del dominio real en la respuesta del día asistible.
-class DiaAsistibleResponse(BaseModel):
-    id_dia: int
-    fecha: date
-    
-class AsistenciaEstudianteRequest(BaseModel):
-    id_estudiante: int
-    estado: str
-    
-# TODO: Definir un enum o validación para los estados de asistencia.
+# Clase para mostrar asistencias al estudiante
 class AsistenciaEstudianteResponse(BaseModel):
-    id_estudiante: int
-    nombre: str
-    estado: str | None
+    materia : str 
+    fecha : date 
+    estado : str 
+
+# Mensaje sobre la asistencia
+class AsistenciaMensajeResponse(BaseModel):
+    mensaje: str 
     
-# TODO: Completar la forma del historial con los campos requeridos por el frontend.
-class HistorialAsistenciaResponse(BaseModel):
-    curso: str
-    fecha: date
-    estado: str
     
-class MensajeResponse(BaseModel):
-    mensaje: str
+    

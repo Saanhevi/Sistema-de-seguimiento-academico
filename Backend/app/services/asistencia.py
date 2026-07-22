@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Any
-
+from sqlalchemy.orm import Session
 
 # TODO: Reemplazar este stub por un servicio real con repositorios, validaciones y reglas de negocio.
 class AsistenciaService:
@@ -10,7 +10,10 @@ class AsistenciaService:
     pero en esta iteración ofrece un comportamiento mínimo para que la API pueda
     importarse correctamente.
     """
-
+    def __init__(self, session : Session):
+        self.session = session
+    
+    
     # TODO: Implementar la creación real de días asistibles con validación de curso y fechas.
     def crear_dia_asistible(self, id_curso: int, request: Any) -> dict[str, Any]:
         return {

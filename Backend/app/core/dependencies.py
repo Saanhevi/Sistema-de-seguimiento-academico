@@ -7,6 +7,7 @@ from app.repositories.usuario import UsuarioRepository
 from app.services.auth import AuthService
 from app.services.curso import CursoService
 from app.services.calificacion import CalificacionService
+from app.services.asistencia import AsistenciaService
 
 # Obtener una session
 def get_session():
@@ -23,6 +24,9 @@ def get_curso_service(session = Depends(get_session)):
 
 def get_calificacion_service(session = Depends(get_session)):
     return CalificacionService(session)
+
+def get_asistencia_service(session = Depends(get_session)):
+    return AsistenciaService(session)
 
 # Esquema de autenticación: espera un header "Authorization: Bearer <token>"
 security_scheme = HTTPBearer()
