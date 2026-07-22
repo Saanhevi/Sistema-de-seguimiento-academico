@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from app.models.grado import Grado
     from app.models.materia import Materia
     from app.models.periodo_academico import PeriodoAcademico
-
+    from app.models.dia_asistible import DiaAsistible
 
 class Curso(Base):
     __tablename__ = "curso"
@@ -23,7 +23,8 @@ class Curso(Base):
     grado: Mapped["Grado"] = relationship(back_populates="cursos")
     materia: Mapped["Materia"] = relationship(back_populates="cursos")
     periodo: Mapped["PeriodoAcademico"] = relationship(back_populates="cursos")
-
+    dias_asistibles : Mapped[list["DiaAsistible"]] = relationship(back_populates="curso")
+    
     def __repr__(self) -> str:
         return (
             f"Curso(id_curso={self.id_curso}, id_docente={self.id_docente}, "

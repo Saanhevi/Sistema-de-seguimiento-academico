@@ -2,6 +2,12 @@ from pydantic import BaseModel
 from datetime import date 
 
 #Necesarios para mostrar la lista de asistencias
+class AsistenciaResponse(BaseModel):
+    id_estudiante: int 
+    nombres : str 
+    apellidos : str 
+    estado : str 
+    
 class AsistenciaListaResponse(BaseModel):
     id_dia: int 
     grado: str 
@@ -9,12 +15,7 @@ class AsistenciaListaResponse(BaseModel):
     fecha : date 
     asistencias : list[AsistenciaResponse]
     
-class AsistenciaResponse(BaseModel):
-    id_estudiante: int 
-    nombres : str 
-    apellidos : str 
-    estado : str 
-    
+
 # Clase para guardar la asistencia de un estudiante
 class AsistenciaRequest(BaseModel):
     id_estudiante : int 
@@ -30,5 +31,8 @@ class AsistenciaEstudianteResponse(BaseModel):
 class AsistenciaMensajeResponse(BaseModel):
     mensaje: str 
     
+#Dia en donde se toma asistencia
+class DiaAsistibleResponse(BaseModel):
+    fecha : date
     
     
