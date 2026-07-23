@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
+import api from '../../../../services/api'
 import '../../styles/DocenteCalificaciones.css'
 
 const secciones = ['3ro A', '3ro B', '2do A', '2do B']
 const bimestres = [1, 2, 3, 4]
 
-const estudiantes = [
+const studentFallback = [
   { id: 1, nombre: 'Sofía Ramírez', iniciales: 'SR', color: 'teal', promedio: 4.3, estado: 'Bueno' },
   { id: 2, nombre: 'Andrés Molina', iniciales: 'AM', color: 'blue', promedio: 3.8, estado: 'En proceso' },
   { id: 3, nombre: 'Camila Torres', iniciales: 'CT', color: 'orange', promedio: 4.6, estado: 'Excelente' },
@@ -44,11 +45,72 @@ export default function DocenteCalificaciones() {
   const [bimestre, setBimestre] = useState(3)
   const [editingId, setEditingId] = useState(null)
   const [draft, setDraft] = useState('')
+  const [estudiantes, setEstudiantes] = useState(studentFallback)
+  const [notasBackend, setNotasBackend] = useState([])
+  const [studentNameMap, setStudentNameMap] = useState({})
+  const [notaRows, setNotaRows] = useState([])
+  const [loadingNotas, setLoadingNotas] = useState(true)
 
   const promedioSeccion = useMemo(() => {
     const avg = estudiantes.reduce((sum, student) => sum + student.promedio, 0) / estudiantes.length
     return avg.toFixed(1)
+  }, [estudiantes])
+
+  const getStudentName = (id) => {
+    return studentNameMap[id] || estudiantes.find((item) => item.id === id)?.nombre || `Estudiante ${id}`
+  }
+
+  useEffect(() => {
+    let mounted = true
+
+    async function cargarDatos() {
+      try {
+        const response = await api.get('/api/notas')
+        const notas = Array.isArray(response.data) ? response.data : []
+        if (!mounted) return
+        setNotasBackend(notas)
+
+        const uniqueIds = [...new Set(notas.map((nota) => nota.id_estudiante))]
+        const entries = await Promise.all(
+          uniqueIds.map(async (id) => {
+            try {
+              const estudianteResponse = await api.get(`/api/estudiantes/${id}`)
+              const estudiante = estudianteResponse.data
+              const nombre = `${estudiante.nombre ?? ''} ${estudiante.apellido ?? ''}`.trim() || `Estudiante ${id}`
+              return [id, nombre]
+            } catch (error) {
+              return [id, `Estudiante ${id}`]
+            }
+          })
+        )
+
+        if (!mounted) return
+        setStudentNameMap(Object.fromEntries(entries))
+      } catch (error) {
+        console.warn('No se pudieron cargar notas desde el backend:', error)
+      } finally {
+        if (mounted) {
+          setLoadingNotas(false)
+        }
+      }
+    }
+
+    cargarDatos()
+    return () => {
+      mounted = false
+    }
   }, [])
+
+  useEffect(() => {
+    setNotaRows(
+      notasBackend.map((nota) => ({
+        id_actividad: nota.id_actividad,
+        id_estudiante: nota.id_estudiante,
+        nombre: getStudentName(nota.id_estudiante),
+        calificacion: nota.calificacion
+      }))
+    )
+  }, [notasBackend, estudiantes, studentNameMap])
 
   const handleSave = () => {
     if (editingId !== null) {
@@ -125,76 +187,103 @@ export default function DocenteCalificaciones() {
         </section>
 
         <section className="dc-table-wrap">
-          <table className="dc-table">
-            <thead>
-              <tr>
-                <th>Estudiante</th>
-                {actividades.map(actividad => (
-                  <th key={actividad.id}>{actividad.nombre}</th>
-                ))}
-                <th>Promedio</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {estudiantes.map(student => {
-                const estado = getEstado(student.promedio)
-                return (
-                  <tr key={student.id}>
+          {loadingNotas ? (
+            <div className="dc-empty">Cargando notas...</div>
+          ) : notaRows.length > 0 ? (
+            <table className="dc-table">
+              <thead>
+                <tr>
+                  <th>ID actividad</th>
+                  <th>Estudiante</th>
+                  <th>Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {notaRows.map((nota, index) => (
+                  <tr key={`${nota.id_estudiante}-${nota.id_actividad}-${index}`}>
+                    <td>{nota.id_actividad}</td>
+                    <td>{nota.nombre}</td>
                     <td>
-                      <div className="dc-student-cell">
-                        <div className={`dc-avatar ${student.color}`}>{student.iniciales}</div>
-                        <div>
-                          <strong>{student.nombre}</strong>
-                          <p>{student.id} · {seccion}</p>
-                        </div>
-                      </div>
-                    </td>
-                    {actividades.map(actividad => {
-                      const value = notas[bimestre][student.id] ?? 0
-                      const isEditing = editingId === `${student.id}-${actividad.id}`
-                      return (
-                        <td key={actividad.id}>
-                          {isEditing ? (
-                            <div className="dc-grade-editor">
-                              <input
-                                type="number"
-                                min="0"
-                                max="5"
-                                step="0.1"
-                                value={draft}
-                                onChange={(e) => setDraft(e.target.value)}
-                              />
-                              <div className="dc-editor-actions">
-                                <button className="save" onClick={handleSave}>Guardar</button>
-                                <button className="cancel" onClick={() => setEditingId(null)}>Cancelar</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              className={`dc-row-btn ${getBadgeClass(value)}`}
-                              onClick={() => {
-                                setEditingId(`${student.id}-${actividad.id}`)
-                                setDraft(String(value))
-                              }}
-                            >
-                              {value.toFixed(1)}
-                            </button>
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td>
-                      <span className={`dc-row-btn ${getBadgeClass(student.promedio)}`}>{student.promedio.toFixed(1)}</span>
-                    </td>
-                    <td>
-                      <span className={`dc-row-btn ${estado.cls}`}>{estado.label}</span>
+                      <span className={`dc-row-btn ${getBadgeClass(nota.calificacion)}`}>
+                        {nota.calificacion?.toFixed(1) ?? '--'}
+                      </span>
                     </td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="dc-table">
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  {actividades.map(actividad => (
+                    <th key={actividad.id}>{actividad.nombre}</th>
+                  ))}
+                  <th>Promedio</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {estudiantes.map(student => {
+                  const estado = getEstado(student.promedio)
+                  return (
+                    <tr key={student.id}>
+                      <td>
+                        <div className="dc-student-cell">
+                          <div className={`dc-avatar ${student.color}`}>{student.iniciales}</div>
+                          <div>
+                            <strong>{student.nombre}</strong>
+                            <p>{student.id} · {seccion}</p>
+                          </div>
+                        </div>
+                      </td>
+                      {actividades.map(actividad => {
+                        const value = notas[bimestre][student.id] ?? 0
+                        const isEditing = editingId === `${student.id}-${actividad.id}`
+                        return (
+                          <td key={actividad.id}>
+                            {isEditing ? (
+                              <div className="dc-grade-editor">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="5"
+                                  step="0.1"
+                                  value={draft}
+                                  onChange={(e) => setDraft(e.target.value)}
+                                />
+                                <div className="dc-editor-actions">
+                                  <button className="save" onClick={handleSave}>Guardar</button>
+                                  <button className="cancel" onClick={() => setEditingId(null)}>Cancelar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                className={`dc-row-btn ${getBadgeClass(value)}`}
+                                onClick={() => {
+                                  setEditingId(`${student.id}-${actividad.id}`)
+                                  setDraft(String(value))
+                                }}
+                              >
+                                {value.toFixed(1)}
+                              </button>
+                            )}
+                          </td>
+                        )
+                      })}
+                      <td>
+                        <span className={`dc-row-btn ${getBadgeClass(student.promedio)}`}>{student.promedio.toFixed(1)}</span>
+                      </td>
+                      <td>
+                        <span className={`dc-row-btn ${estado.cls}`}>{estado.label}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </section>
       </div>
   </main>
