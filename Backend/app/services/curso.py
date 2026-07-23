@@ -171,3 +171,18 @@ class CursoService:
             }
             for row in rows
         ]
+
+    def listar_cursos_docente(self, id_docente:int):
+        cursos = self.curso_repo.listar_por_docente(id_docente)
+
+        return [
+            {
+                "id_curso": curso.id_curso,
+                "grado": curso.grado.nombre,
+                "materia": curso.materia.nombre,
+                "periodo": curso.periodo.nombre,
+                "anio": curso.periodo.anio
+            }
+            for curso in cursos
+        ]
+            

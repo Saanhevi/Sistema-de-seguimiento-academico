@@ -1,0 +1,128 @@
+.asistencia-container{
+    max-width:1100px;
+    margin:30px auto;
+    padding:25px;
+}
+
+.asistencia-card{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+.asistencia-card h2,
+.asistencia-card h3{
+    margin-top:0;
+}
+
+.asistencia-select,
+.asistencia-input{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    margin-bottom:15px;
+    border:1px solid #d9d9d9;
+    border-radius:8px;
+    font-size:15px;
+}
+
+.asistencia-btn{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.asistencia-btn:hover{
+    background:#1d4ed8;
+}
+
+.historial-lista{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.historial-btn{
+    background:#f3f4f6;
+    border:none;
+    padding:10px 15px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.historial-btn:hover{
+    background:#dbeafe;
+}
+
+.tabla-asistencia{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.tabla-asistencia thead{
+    background:#2563eb;
+    color:white;
+}
+
+.tabla-asistencia th,
+.tabla-asistencia td{
+    padding:12px;
+    border-bottom:1px solid #e5e7eb;
+    text-align:left;
+}
+
+.estado-select{
+    width:150px;
+    padding:8px;
+    border-radius:6px;
+}
+
+.guardar-container{
+    margin-top:20px;
+    text-align:right;
+}
+
+.badge{
+
+    padding:4px 10px;
+
+    border-radius:15px;
+
+    color:white;
+
+    font-size:13px;
+
+}
+
+.presente{
+
+    background:#16a34a;
+
+}
+
+.ausente{
+
+    background:#dc2626;
+
+}
+
+.tardanza{
+
+    background:#d97706;
+
+}
+
+.error{
+
+    color:#dc2626;
+
+    font-weight:bold;
+
+}

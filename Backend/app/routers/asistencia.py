@@ -11,7 +11,7 @@ from app.schemas.asistencia import (
 from datetime import date 
 
 router = APIRouter(
-    prefix="/asistencias",
+    prefix="/api/asistencias",
     tags=["Asistencias"],
 )
 

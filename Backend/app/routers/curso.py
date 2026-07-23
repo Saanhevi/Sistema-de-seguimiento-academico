@@ -13,6 +13,7 @@ from app.schemas.curso import (
     MatriculaResponse,
     PeriodoAcademicoCreate,
     PeriodoAcademicoResponse,
+    CursoDocenteResponse
 )
 from app.services.curso import CursoService
 
@@ -126,3 +127,10 @@ def listar_estudiantes_del_grado(
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
     return service.listar_estudiantes_por_grado(id_grado=id_grado, anio=anio)
+
+@router.get("/docente/cursos", response_model=list[CursoDocenteResponse])
+def listar_cursos_docente(
+    id_docente: int, 
+    service : CursoService = Depends(get_curso_service)
+):
+    return service.listar_cursos_docente(id_docente)

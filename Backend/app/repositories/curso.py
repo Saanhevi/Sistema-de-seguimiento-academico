@@ -41,3 +41,11 @@ class CursoRepository:
             Curso.id_periodo == id_periodo,
         )
         return self.session.execute(query).scalars().first()
+
+    def listar_por_docente(self, id_docente: int):
+        query = (
+            select(Curso)
+            .where(Curso.id_docente == id_docente)
+        )
+
+        return self.session.execute(query).scalars().all()

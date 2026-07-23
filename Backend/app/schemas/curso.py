@@ -78,3 +78,10 @@ class EstudianteMatriculadoResponse(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     correo: Optional[str] = None
+
+class CursoDocenteResponse(BaseModel):
+    id_curso: int
+    grado: str
+    materia: str
+    periodo: str
+    anio: int

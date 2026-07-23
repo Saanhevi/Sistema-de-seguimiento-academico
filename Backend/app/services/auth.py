@@ -48,6 +48,7 @@ class AuthService:
             return{
                 "access_token": token_real,
                 "token_type": "bearer",
+                "id_usuario": user.id_usuario,
                 "rol": user.rol,
                 "nombres": user.nombres,
                 "apellidos": user.apellidos
