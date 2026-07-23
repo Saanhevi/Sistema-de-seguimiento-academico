@@ -3,6 +3,8 @@ from app.schemas.asistencia import AsistenciaRequest
 from app.repositories.asistencia import AsistenciaRepository
 from app.repositories.curso import CursoRepository
 from app.models.historial_asistencia import HistorialAsistencia
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
 
 class AsistenciaService:
     """Servicio temporal para el módulo de asistencia.
@@ -107,9 +109,44 @@ class AsistenciaService:
         
 
     def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
-        return {"mensaje" : "Actualizacion correcta"}
+        try:
+            for registro in lista_asistencia:
+                filas = self.asistencia_repository.actualizar_registro_asistencia(
+                    id_dia,
+                    registro.id_estudiante, 
+                    registro.estado
+                )
+
+                if filas == 0:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"El estudiante {registro.id_estudiante} no pertenece a esta lista."
+                    )
+                
+            self.session.commit()
+            return {"mensaje" : "Actualizacion correcta"}
+            
+        except SQLAlchemyError:
+            self.session.rollback()
+            raise
     
     def consultar_asistencias_estudiante(self, id_estudiante):
+        registros_asistencias = self.asistencia_repository.listar_historial_estudiante(id_estudiante)
+        lista_asistencias = []
+        
+        for registro in registros_asistencias:
+            dia = registro.dia_asistible
+            lista_asistencias.append(
+                {
+                    "materia" : dia.curso.materia.nombre,
+                    "fecha" : dia.fecha, 
+                    "estado" : registro.estado
+                }
+            )
+            
+        return lista_asistencias
+        
+        """
         return [
             {
                 "materia": "Biologia",
@@ -121,9 +158,24 @@ class AsistenciaService:
                 "fecha": "2026-07-22",
                 "estado": "Presente"
             }
-        ]
+        ]"""
     
     def historial_dias_curso(self, id_curso):
+        curso = self.curso_repository.buscar_por_id(id_curso)
+        dias_asistibles =  sorted(
+            curso.dias_asistibles,
+            key=lambda dia: dia.fecha,
+            reverse=True
+        )
+        
+        fechas = []
+
+        for dia_asitible in dias_asistibles:
+            fechas.append(
+                {"fecha" : dia_asitible.fecha }
+            )        
+        return fechas
+        """
         return [
             {
                 "fecha": "2026-07-22"
@@ -131,4 +183,4 @@ class AsistenciaService:
             {
                 "fecha": "2026-07-23"
             }
-        ]
+        ]"""

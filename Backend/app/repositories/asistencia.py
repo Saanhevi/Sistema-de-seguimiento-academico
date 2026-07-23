@@ -1,4 +1,4 @@
-from sqlalchemy import select 
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from app.models.dia_asistible import DiaAsistible
 from app.models.historial_asistencia import HistorialAsistencia
@@ -20,7 +20,7 @@ class AsistenciaRepository:
         ) 
         self.session.add(dia_asistible)
         
-        self.session.refresh(dia_asistible)
+        self.session.flush()
         return dia_asistible
         
     def listar_historial(self, id_curso, fecha):
@@ -29,7 +29,10 @@ class AsistenciaRepository:
         query = select(HistorialAsistencia).where(HistorialAsistencia.id_dia == id_dia)
         return self.session.execute(query).scalars().all()
     
-
+    def listar_historial_estudiante(self, id_estudiante):
+        query = select(HistorialAsistencia).where(HistorialAsistencia.id_estudiante == id_estudiante)
+        return self.session.execute(query).scalars().all() 
+        
     def obtener_historial(self, id_dia):
         query = (
             select(HistorialAsistencia)
@@ -37,3 +40,11 @@ class AsistenciaRepository:
         )
 
         return self.session.execute(query).scalars().all()
+    
+    def actualizar_registro_asistencia(self,id_dia, id_estudiante, estado):
+        query = update(HistorialAsistencia).where(
+            HistorialAsistencia.id_dia == id_dia,
+            HistorialAsistencia.id_estudiante == id_estudiante).values(estado = estado)
+        
+        resultado = self.session.execute(query)
+        return resultado.rowcount
