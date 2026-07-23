@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_curso_service, get_session, require_role
+from app.repositories.usuario import UsuarioRepository
 from app.schemas.curso import (
     CursoCreate,
     CursoResponse,
@@ -126,3 +127,22 @@ def listar_estudiantes_del_grado(
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
     return service.listar_estudiantes_por_grado(id_grado=id_grado, anio=anio)
+
+
+@router.get("/estudiantes/{id_estudiante}", response_model=EstudianteMatriculadoResponse)
+def obtener_estudiante_por_id(
+    id_estudiante: int,
+    session: Session = Depends(get_session),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    repositorio = UsuarioRepository(session)
+    usuario_obj = repositorio.buscar_por_id(id_estudiante)
+    if usuario_obj is None or getattr(usuario_obj, "rol", None) != "Estudiante":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estudiante no encontrado")
+
+    return {
+        "id_estudiante": usuario_obj.id_usuario,
+        "nombre": usuario_obj.nombres,
+        "apellido": usuario_obj.apellidos,
+        "correo": usuario_obj.correo,
+    }

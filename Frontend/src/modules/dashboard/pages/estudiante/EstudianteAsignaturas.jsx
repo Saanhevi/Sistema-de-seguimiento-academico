@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import api from '../../../../services/api'
 import '../../styles/EstudianteAsignaturas.css'
 
-const materias = [
+const defaultMaterias = [
   {
     id: 1,
     nombre: 'Matemáticas',
@@ -55,9 +56,86 @@ const materias = [
   }
 ]
 
+const ACTIVITY_PESO = '10%'
+
+function construirMateriasDesdeNotas(notas = []) {
+  const actividades = notas.map((nota) => ({
+    titulo: `Actividad ${nota.id_actividad}`,
+    peso: ACTIVITY_PESO,
+    nota: nota.calificacion?.toString() ?? '--',
+    comentario: nota.comentario ?? '—'
+  }))
+
+  const promedio = actividades.length
+    ? (
+        actividades.reduce((sum, actividad) => sum + Number(actividad.nota || 0), 0) /
+        actividades.length
+      ).toFixed(2)
+    : '--'
+
+  return [
+    {
+      id: 1,
+      nombre: 'Mis actividades',
+      docente: 'Docente asignado',
+      promedio,
+      escala: 'Escala 0–5',
+      bimestres: [
+        {
+          id: 1,
+          promedio,
+          actividades
+        }
+      ],
+      definitiva: promedio
+    }
+  ]
+}
+
 export default function EstudianteAsignaturas() {
-  const [openMatter, setOpenMatter] = useState(1)
-  const [openBimester, setOpenBimester] = useState(3)
+  const [materias, setMaterias] = useState(defaultMaterias)
+  const [openMatter, setOpenMatter] = useState(defaultMaterias[0].id)
+  const [openBimester, setOpenBimester] = useState(defaultMaterias[0].bimestres[0].id)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function cargarNotas() {
+      try {
+        const whoamiResponse = await api.get('/api/whoami')
+        if (whoamiResponse?.data?.rol !== 'Estudiante') {
+          return
+        }
+
+        const notasResponse = await api.get('/api/notas')
+        const notas = Array.isArray(notasResponse.data) ? notasResponse.data : []
+        if (!notas.length) {
+          return
+        }
+
+        if (!mounted) {
+          return
+        }
+
+        const materiasBackend = construirMateriasDesdeNotas(notas)
+        setMaterias(materiasBackend)
+        setOpenMatter(materiasBackend[0].id)
+        setOpenBimester(materiasBackend[0].bimestres[0].id)
+      } catch (error) {
+        console.warn('No se pudieron cargar notas desde el backend:', error)
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    cargarNotas()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <main className="ea-main">
@@ -153,7 +231,7 @@ export default function EstudianteAsignaturas() {
                                     <td>{a.titulo}</td>
                                     <td>{a.peso}</td>
                                     <td><span className="ea-note">{a.nota}</span></td>
-                                    <td>—</td>
+                                    <td>{a.comentario}</td>
                                   </tr>
                                 ))}
                               </tbody>
