@@ -136,6 +136,8 @@ class AsistenciaService:
         
         for registro in registros_asistencias:
             dia = registro.dia_asistible
+            if dia is None:
+                continue
             lista_asistencias.append(
                 {
                     "materia" : dia.curso.materia.nombre,
@@ -144,7 +146,7 @@ class AsistenciaService:
                 }
             )
             
-        return lista_asistencias
+        return sorted(lista_asistencias, key=lambda item: item["fecha"], reverse=True)
         
         """
         return [

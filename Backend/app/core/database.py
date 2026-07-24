@@ -5,7 +5,12 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 # Se crea el motor de conexion
-engine = create_engine(settings.DATABASE_URL, echo =False) # Para debbuguear dejar echo = True
+engine = create_engine(
+    settings.DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)  # Para debbuguear dejar echo = True
 
 # Se crea la fabrica de sesiones
 SessionLocal = sessionmaker(bind=engine)

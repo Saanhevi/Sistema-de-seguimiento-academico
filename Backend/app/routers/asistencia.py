@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from app.services.asistencia import AsistenciaService
-from app.core.dependencies import get_asistencia_service
+from app.core.dependencies import get_asistencia_service, get_current_user
 from app.schemas.asistencia import (
     AsistenciaListaResponse,
     DiaAsistibleResponse,
@@ -33,9 +33,10 @@ def guardar_asistencia(
 
 @router.get("/mis-asistencias", response_model=list[AsistenciaEstudianteResponse])
 def consultar_mis_asistencias(
-    id_estudiante : int = Query(..., description="ID del Estudiante"),
-    service : AsistenciaService = Depends(get_asistencia_service)
+    service : AsistenciaService = Depends(get_asistencia_service),
+    usuario = Depends(get_current_user),
 ):
+    id_estudiante = usuario.rol_estudiante.id_estudiante
     return service.consultar_asistencias_estudiante(id_estudiante)
 
 @router.get("/listas/{id_curso}", response_model=list[DiaAsistibleResponse])

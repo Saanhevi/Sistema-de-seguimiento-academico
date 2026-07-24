@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../../../context/AuthContext';
 
 // PortalEstudiantil: componente funcional que renderiza la interfaz
 // principal para estudiantes. Contiene navegación, sección hero,
@@ -13,7 +14,9 @@ import { Outlet, useLocation } from 'react-router-dom';
 // - two-col: panel de entregas y panel de notas
 export default function PortalEstudiantil() {
   const location = useLocation();
+  const { user } = useAuth();
   const isHomeView = location.pathname === '/dashboard/estudiante';
+  const nombreEstudiante = user?.nombres || 'Estudiante';
 
   if (!isHomeView) {
     return <Outlet />;
@@ -27,8 +30,8 @@ export default function PortalEstudiantil() {
         {/* Resumen principal del estudiante con contexto de bimestre y sección */}
         <div className="hero">
           <p className="hero-eyebrow">Año lectivo 2025–2026 · 3er Bimestre en curso</p>
-          <h2 className="hero-name">Bienvenida, Sofía</h2>
-          <p className="hero-sub">3ro de Bachillerato · Sección A · Colegio San Andrés</p>
+          <h2 className="hero-name">Bienvenido, {nombreEstudiante}</h2>
+          <p className="hero-sub">3ro de Bachillerato · Sección A · Colegio Lara Bonilla</p>
 
           <div className="hero-stats">
             <div>

@@ -14,7 +14,6 @@ import HistorialDias from "../../../asistencias/components/HistorialDias";
 import AsistenciaTable from "../../../asistencias/components/AsistenciaTable";
 
 export default function DocenteAsistencia() {
-
     const { user } = useAuth();
 
     const [cursos, setCursos] = useState([]);
@@ -22,7 +21,7 @@ export default function DocenteAsistencia() {
     const [dias, setDias] = useState([]);
     const [listaAsistencia, setListaAsistencia] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [mensaje, setMensaje] = useState({ type: "", text: "" });
 
     useEffect(() => {
         if (user) {
@@ -31,118 +30,95 @@ export default function DocenteAsistencia() {
     }, [user]);
 
     async function cargarCursos() {
-
         try {
-
-            console.log("Usuario autenticado:", user);
-
             const data = await listarCursosDocente(user.id_usuario);
-
             setCursos(data);
-
+            setMensaje({ type: "", text: "" });
         } catch (err) {
-
             console.error(err);
-
-            setError("No fue posible cargar los cursos.");
-
+            setMensaje({
+                type: "error",
+                text: "No fue posible cargar los cursos."
+            });
         }
-
     }
 
     async function seleccionarCurso(idCurso) {
-
         setCursoSeleccionado(idCurso);
-
         setListaAsistencia(null);
+        setMensaje({ type: "", text: "" });
 
         if (!idCurso) {
-
             setDias([]);
-
             return;
-
         }
 
         try {
-
             const historial = await historialDiasCurso(idCurso);
-
             setDias(historial);
-
         } catch (err) {
-
             console.error("Error cargando historial", err);
-            setError(
-                "No fue posible cargar el historial. " +
-                (err.response?.data?.detail || err.message || "Revise la consola.")
-            );
-
+            setMensaje({
+                type: "error",
+                text: "No fue posible cargar el historial del curso."
+            });
         }
-
     }
 
     async function cargarLista(fecha) {
+        if (!cursoSeleccionado || !fecha) return;
 
         try {
-
             setLoading(true);
-
-            const lista = await obtenerListaAsistencia(
-                cursoSeleccionado,
-                fecha
-            );
-
+            setMensaje({ type: "", text: "" });
+            const lista = await obtenerListaAsistencia(cursoSeleccionado, fecha);
             setListaAsistencia(lista);
-
-        } catch {
-
-            setError("No fue posible cargar la lista.");
-
+        } catch (err) {
+            console.error(err);
+            setMensaje({
+                type: "error",
+                text: "No fue posible cargar la lista de asistencia."
+            });
         } finally {
-
             setLoading(false);
-
         }
-
     }
 
     async function crearNuevoDia(fecha) {
-
         await cargarLista(fecha);
-
-        const historial = await historialDiasCurso(cursoSeleccionado);
-
-        setDias(historial);
-
+        try {
+            const historial = await historialDiasCurso(cursoSeleccionado);
+            setDias(historial);
+        } catch (err) {
+            console.error(err);
+        }
     }
 
     async function guardar(asistencias) {
-
-        try {
-
-            await guardarListaAsistencia(
-                listaAsistencia.id_dia,
-                asistencias
-            );
-
-            alert("Lista guardada correctamente.");
-
-        } catch {
-
-            alert("Error al guardar.");
-
+        if (!listaAsistencia?.id_dia) {
+            setMensaje({ type: "error", text: "No hay una lista activa para guardar." });
+            return;
         }
 
+        try {
+            await guardarListaAsistencia(listaAsistencia.id_dia, asistencias);
+            setMensaje({ type: "success", text: "Asistencia guardada correctamente." });
+        } catch (err) {
+            console.error(err);
+            setMensaje({
+                type: "error",
+                text: "No fue posible guardar la asistencia."
+            });
+        }
     }
 
     return (
-
         <div className="asistencia-container">
-
             <h2>Tomar asistencia</h2>
 
-            {error && <p className="error">{error}</p>}
+            {mensaje.text && (
+                <p className={`message ${mensaje.type}`}>{mensaje.text}</p>
+            )}
 
             <CursoSelector
                 cursos={cursos}
@@ -150,29 +126,22 @@ export default function DocenteAsistencia() {
                 onSeleccionarCurso={seleccionarCurso}
             />
 
-            {
-                cursoSeleccionado !== "" &&
-
+            {cursoSeleccionado !== "" && (
                 <HistorialDias
                     dias={dias}
                     onSeleccionarDia={cargarLista}
                     onCrearDia={crearNuevoDia}
                 />
-            }
+            )}
 
             {loading && <p>Cargando...</p>}
 
-            {
-                listaAsistencia &&
-
+            {listaAsistencia && (
                 <AsistenciaTable
                     asistencias={listaAsistencia.asistencias}
                     onGuardar={guardar}
                 />
-            }
-
+            )}
         </div>
-
     );
-
 }

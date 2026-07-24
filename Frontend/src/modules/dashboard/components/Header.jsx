@@ -36,7 +36,7 @@ export default function Header() {
 
                 <div className="logo-text">
 
-                    <h1>Colegio San Andrés</h1>
+                    <h1>Colegio Lara Bonilla</h1>
 
                     <p>Portal Académico</p>
 
