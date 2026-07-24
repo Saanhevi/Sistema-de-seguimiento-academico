@@ -112,10 +112,11 @@ def crear_matricula(
 def listar_matriculas(
     id_grado: int | None = None,
     anio: int | None = None,
+    id_estudiante: int | None = None,
     service: CursoService = Depends(get_curso_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
-    return service.listar_matriculas(id_grado=id_grado, anio=anio)
+    return service.listar_matriculas(id_grado=id_grado, anio=anio, id_estudiante=id_estudiante, usuario_actual=usuario)
 
 
 @router.get("/grados/{id_grado}/estudiantes", response_model=list[EstudianteMatriculadoResponse])

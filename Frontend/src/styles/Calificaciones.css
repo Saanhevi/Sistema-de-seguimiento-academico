@@ -1,0 +1,561 @@
+/* Estilos del módulo de calificaciones. Prefijo .cal- para no chocar con .dc- ni .ea-.
+   Todos los colores salen de variables.css. */
+
+.cal-header {
+  margin-bottom: 20px;
+}
+
+.cal-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.cal-header p {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.cal-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.cal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.cal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* Toolbar de selección */
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.cal-pill {
+  padding: 6px 16px;
+  border-radius: 99px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cal-pill.active {
+  background: var(--teal-primary);
+  color: var(--ink);
+  border-color: var(--teal-primary);
+  font-weight: 600;
+}
+
+.cal-pill:hover:not(.active) {
+  border-color: var(--teal-brand);
+}
+
+/* Tabla de notas */
+.cal-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.cal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cal-table thead tr {
+  background: var(--bg);
+}
+
+.cal-table th {
+  padding: 10px 14px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink-muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cal-table th:first-child {
+  text-align: left;
+}
+
+.cal-table th small {
+  display: block;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--ink-light);
+}
+
+.cal-table tbody tr:hover {
+  background: var(--ok-soft);
+}
+
+.cal-table td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+}
+
+.cal-table td:first-child {
+  text-align: left;
+}
+
+.cal-table tfoot td {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink-muted);
+  border-bottom: none;
+}
+
+.cal-cell-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cal-cell-btn:disabled {
+  cursor: default;
+}
+
+.cal-cell-comment {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-light);
+  margin-top: 3px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badges de nota */
+.cal-badge {
+  display: inline-block;
+  min-width: 48px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+}
+
+.cal-badge.good {
+  background: var(--ok-soft);
+  color: #0a8a70;
+  border: 1.5px solid var(--teal-primary);
+}
+
+.cal-badge.ok {
+  background: var(--warn-soft);
+  color: #b37400;
+  border: 1.5px solid var(--warn);
+}
+
+.cal-badge.alert {
+  background: var(--alert-soft);
+  color: var(--alert);
+  border: 1.5px solid var(--alert);
+}
+
+.cal-badge.empty {
+  background: var(--bg);
+  color: var(--ink-muted);
+  border: 1.5px solid var(--border);
+}
+
+/* Editor inline de nota */
+.cal-grade-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 130px;
+}
+
+.cal-grade-editor input {
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--teal-primary);
+  font-size: 13px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--bg-card);
+  outline: none;
+}
+
+.cal-grade-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.cal-grade-actions button {
+  flex: 1;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  border: none;
+  cursor: pointer;
+}
+
+.cal-grade-actions .save {
+  background: var(--teal-primary);
+  color: var(--ink);
+}
+
+.cal-grade-actions .cancel {
+  background: var(--bg);
+  color: var(--ink-muted);
+}
+
+/* Banner de periodo */
+.cal-period-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.cal-period-banner.open {
+  background: var(--ok-soft);
+  color: #0a8a70;
+  border: 1px solid var(--teal-primary);
+}
+
+.cal-period-banner.closed {
+  background: var(--bg);
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+}
+
+/* Modal overlay */
+.cal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 28, 28, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.cal-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(17, 28, 28, 0.14);
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.cal-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.cal-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cal-modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.cal-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* Formulario en modal */
+.cal-field {
+  margin-bottom: 14px;
+}
+
+.cal-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.cal-field input,
+.cal-field select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cal-field input:focus,
+.cal-field select:focus {
+  border-color: var(--teal-primary);
+}
+
+/* Formulario inline (crear sección) */
+.cal-inline-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.cal-inline-form .cal-field {
+  margin-bottom: 0;
+}
+
+.cal-inline-form .cal-field.nombre {
+  flex: 2;
+  min-width: 180px;
+}
+
+.cal-inline-form .cal-field.pct {
+  flex: 1;
+  min-width: 110px;
+}
+
+/* Botones principales */
+.cal-btn {
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.cal-btn.primary {
+  background: var(--teal-primary);
+  color: var(--ink);
+}
+
+.cal-btn.primary:hover {
+  background: var(--teal-brand);
+  color: #fff;
+}
+
+.cal-btn.secondary {
+  background: var(--bg);
+  color: var(--ink-muted);
+  border: 1.5px solid var(--border);
+}
+
+.cal-btn.secondary:hover {
+  border-color: var(--teal-brand);
+  color: var(--ink);
+}
+
+.cal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cal-btn.small {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+/* Sección acordeón */
+.cal-seccion {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.cal-seccion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--bg);
+  transition: background 0.1s;
+}
+
+.cal-seccion-header:hover {
+  background: var(--ok-soft);
+}
+
+.cal-seccion-header.selected {
+  background: var(--ok-soft);
+  border-left: 3px solid var(--teal-primary);
+}
+
+.cal-seccion-name {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.cal-seccion-pct {
+  font-size: 12px;
+  color: var(--teal-brand);
+  font-weight: 600;
+}
+
+.cal-seccion-body {
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+}
+
+.cal-actividad-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.cal-actividad-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.cal-actividad-item:last-child {
+  border-bottom: none;
+}
+
+.cal-actividad-fecha {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* Advertencia de porcentaje */
+.cal-warn-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #b37400;
+  background: var(--warn-soft);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  border: 1px solid var(--warn);
+}
+
+/* Mensaje de error del backend */
+.cal-error {
+  color: var(--alert);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.cal-success {
+  color: #0a8a70;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* Estado vacío */
+.cal-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+/* Lista de carga masiva */
+.cal-masiva-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: var(--bg);
+}
+
+.cal-masiva-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.cal-masiva-row span {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.cal-masiva-row input {
+  width: 82px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  text-align: center;
+  color: var(--ink);
+  background: var(--bg-card);
+  outline: none;
+}
+
+.cal-masiva-row input:focus {
+  border-color: var(--teal-primary);
+}
+
+.cal-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin: 0 0 10px;
+}

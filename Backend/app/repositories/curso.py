@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from app.models.curso import Curso
 
 
@@ -17,8 +18,17 @@ class CursoRepository:
             self.session.rollback()
             raise
 
+    def _con_relaciones(self, query):
+        # Carga grado/materia/periodo en la misma query: evita el N+1 al serializar
+        # los campos anidados de CursoResponse.
+        return query.options(
+            joinedload(Curso.grado),
+            joinedload(Curso.materia),
+            joinedload(Curso.periodo),
+        )
+
     def listar(self, id_docente=None, id_grado=None, id_periodo=None):
-        query = select(Curso)
+        query = self._con_relaciones(select(Curso))
 
         if id_docente is not None:
             query = query.where(Curso.id_docente == id_docente)
@@ -30,7 +40,7 @@ class CursoRepository:
         return self.session.execute(query).scalars().all()
 
     def buscar_por_id(self, id_curso):
-        query = select(Curso).where(Curso.id_curso == id_curso)
+        query = self._con_relaciones(select(Curso)).where(Curso.id_curso == id_curso)
         return self.session.execute(query).scalars().first()
 
     def buscar_por_combinacion(self, id_docente, id_grado, id_materia, id_periodo):

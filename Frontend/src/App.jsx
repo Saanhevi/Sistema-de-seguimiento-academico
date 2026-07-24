@@ -8,6 +8,7 @@ import "./styles/Docente.css";
 import "./styles/Estudiante.css";
 import "./styles/Login.css";
 import "./styles/Cursos.css";
+import "./styles/Calificaciones.css";
 import AppRouter from "./routes/AppRouter";
 
 export default function App() {
