@@ -1,3 +1,4 @@
+import unittest
 from types import SimpleNamespace
 
 from app.routers.asistencia import consultar_mis_asistencias
@@ -23,16 +24,25 @@ class StubUsuario:
     rol_estudiante = SimpleNamespace(id_estudiante=7)
 
 
-def test_consultar_mis_asistencias_usa_el_estudiante_autenticado():
-    service = StubService()
+class ConsultarMisAsistenciasTests(unittest.TestCase):
 
-    resultado = consultar_mis_asistencias(service=service, usuario=StubUsuario())
+    def test_consultar_mis_asistencias_usa_el_estudiante_autenticado(self):
+        service = StubService()
 
-    assert resultado == [
-        {
-            "materia": "Matemáticas",
-            "fecha": "2026-07-23",
-            "estado": "Ausente",
-        }
-    ]
-    assert service.calls == [7]
+        resultado = consultar_mis_asistencias(service=service, usuario=StubUsuario())
+
+        self.assertEqual(
+            resultado,
+            [
+                {
+                    "materia": "Matemáticas",
+                    "fecha": "2026-07-23",
+                    "estado": "Ausente",
+                }
+            ],
+        )
+        self.assertEqual(service.calls, [7])
+
+
+if __name__ == "__main__":
+    unittest.main()
