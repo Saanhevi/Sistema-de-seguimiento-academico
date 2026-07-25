@@ -17,7 +17,8 @@ const mockPeriodos = [
 ];
 
 const mockCursos = [
-  { id_curso: 1, id_docente: 1, id_grado: 1, id_materia: 1, id_periodo: 1 }
+  { id_curso: 1, id_docente: 1, id_grado: 1, id_materia: 1, id_periodo: 1, grado: "10°", materia: "Matemáticas", periodo: "Primer Periodo", anio: 2026 },
+  { id_curso: 2, id_docente: 1, id_grado: 2, id_materia: 2, id_periodo: 1, grado: "11°", materia: "Ciencias", periodo: "Primer Periodo", anio: 2026 }
 ];
 
 const mockMatriculas = [
@@ -27,6 +28,8 @@ const mockMatriculas = [
 const mockEstudiantes = [
   { id_estudiante: 1, nombre: "Luis", apellido: "Pérez", correo: "luis@colegio.com" }
 ];
+
+const mockAsociaciones = new Set();
 
 async function listarGrados() {
   if (useMocks) return mockGrados;
@@ -168,6 +171,86 @@ async function listarEstudiantesDeGrado(idGrado, anio) {
   }
 }
 
+async function listarCursosDocente(idDocente) {
+  if (useMocks) {
+    if (idDocente) return mockCursos.filter((curso) => curso.id_docente === Number(idDocente));
+    return mockCursos.filter((curso) => curso.id_docente === 1);
+  }
+  try {
+    const params = idDocente ? { id_docente: idDocente } : undefined;
+    const response = await api.get("/api/docente/cursos", { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: "Error de conexión con el servidor" };
+  }
+}
+
+async function listarEstudiantesPorCurso(idCurso) {
+  if (useMocks) {
+    const curso = mockCursos.find((item) => item.id_curso === Number(idCurso));
+    if (!curso) throw { detail: "Curso no encontrado" };
+
+    const estudiantes = mockEstudiantes.map((estudiante) => ({
+      id_estudiante: estudiante.id_estudiante,
+      nombres: estudiante.nombre,
+      apellidos: estudiante.apellido,
+      correo: estudiante.correo,
+      asociado: mockAsociaciones.has(`${curso.id_curso}-${estudiante.id_estudiante}`)
+    }));
+
+    return {
+      id_curso: curso.id_curso,
+      grado: curso.grado,
+      materia: curso.materia,
+      periodo: curso.periodo,
+      anio: curso.anio,
+      estudiantes_disponibles: estudiantes.filter((item) => !item.asociado),
+      estudiantes_asociados: estudiantes.filter((item) => item.asociado)
+    };
+  }
+
+  try {
+    const response = await api.get(`/api/cursos/${idCurso}/estudiantes`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: "Error de conexión con el servidor" };
+  }
+}
+
+async function asociarEstudianteACurso(idCurso, idEstudiante) {
+  if (useMocks) {
+    const key = `${Number(idCurso)}-${Number(idEstudiante)}`;
+    if (mockAsociaciones.has(key)) {
+      throw { detail: "El estudiante ya fue agregado a este curso" };
+    }
+
+    const curso = mockCursos.find((item) => item.id_curso === Number(idCurso));
+    const estudiante = mockEstudiantes.find((item) => item.id_estudiante === Number(idEstudiante));
+    if (!curso) throw { detail: "Curso no encontrado" };
+    if (!estudiante) throw { detail: "Estudiante no encontrado" };
+
+    mockAsociaciones.add(key);
+    return {
+      mensaje: "Estudiante agregado al curso correctamente",
+      curso,
+      estudiante: {
+        id_estudiante: estudiante.id_estudiante,
+        nombres: estudiante.nombre,
+        apellidos: estudiante.apellido,
+        correo: estudiante.correo,
+        asociado: true
+      }
+    };
+  }
+
+  try {
+    const response = await api.post(`/api/cursos/${idCurso}/estudiantes`, { id_estudiante: idEstudiante });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { detail: "Error de conexión con el servidor" };
+  }
+}
+
 export {
   listarGrados,
   crearGrado,
@@ -179,5 +262,8 @@ export {
   crearCurso,
   listarMatriculas,
   crearMatricula,
-  listarEstudiantesDeGrado
+  listarEstudiantesDeGrado,
+  listarCursosDocente,
+  listarEstudiantesPorCurso,
+  asociarEstudianteACurso
 };
