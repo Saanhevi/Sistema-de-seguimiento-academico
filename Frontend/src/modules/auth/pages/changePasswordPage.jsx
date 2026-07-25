@@ -1,4 +1,6 @@
-import ChangePasswordForm from "../components/ChangePasswordForm";
+// El archivo en disco es changePasswordForm.jsx (c minúscula): con la mayúscula
+// el build funcionaba en Windows/macOS pero fallaba en Linux, que sí distingue.
+import ChangePasswordForm from "../components/changePasswordForm";
 
 export default function ChangePasswordPage() {
 

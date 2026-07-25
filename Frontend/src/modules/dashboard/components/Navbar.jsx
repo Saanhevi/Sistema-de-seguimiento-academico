@@ -97,7 +97,7 @@ export default function Navbar() {
 
             {user?.rol === "Estudiante" && (
                 <>
-                    <NavLink to="/dashboard/estudiante/asignaturas" className={({ isActive }) => (isActive ? "active" : "") }>
+                    <NavLink to="/dashboard/estudiante/calificaciones" className={({ isActive }) => (isActive ? "active" : "") }>
                         <svg
                             width="15"
                             height="15"
@@ -108,10 +108,10 @@ export default function Navbar() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         >
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                            <path d="M9 11l3 3L22 4" />
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                         </svg>
-                        Mis Asignaturas
+                        Mis Calificaciones
                     </NavLink>
                     <NavLink to="/dashboard/estudiante/perfil" className={({ isActive }) => (isActive ? "active" : "") }>
                         <svg

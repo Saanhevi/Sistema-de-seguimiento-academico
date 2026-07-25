@@ -51,7 +51,8 @@ class AuthService:
                 "id_usuario": user.id_usuario,
                 "rol": user.rol,
                 "nombres": user.nombres,
-                "apellidos": user.apellidos
+                "apellidos": user.apellidos,
+                "id_usuario": user.id_usuario
             }
             
     def crear_cuenta_estudiantil(self, credentials: CrearCuentaEstudiantilRequest ) -> dict :
@@ -82,7 +83,8 @@ class AuthService:
                 id_estudiante = usuario.id_usuario,
                 estado = "Activo"
             )
-            
+            self.repositorio_estudiante.crear_estudiante(estudiante)
+
             return {
                 "mensaje" : "Registro Exitoso"
             }

@@ -1,175 +1,97 @@
 // eslint-disable-next-line no-unused-vars
-import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { listarMisCursosEstudiante } from '../../../calificaciones/services/calificacionService';
+import { etiquetaCurso, nombreDocente } from '../../../calificaciones/utils/cursos';
 
-// PortalEstudiantil: componente funcional que renderiza la interfaz
-// principal para estudiantes. Contiene navegación, sección hero,
-// lista de entregas y calificaciones. Es un componente presentacional
-// sin estado ni props por ahora.
+// PortalEstudiantil: inicio del estudiante.
 //
-// Este componente está organizado por bloques visuales:
-// - nav: enlaces de navegación del tablero
-// - hero: resumen académico y métricas clave
-// - two-col: panel de entregas y panel de notas
+// RN-10b: esta pantalla no inventa datos. Antes mostraba un saludo fijo
+// ("Bienvenida, Sofía"), un promedio de 8.7 en escala 0-10 (el sistema es 0-5) y
+// entregas/notas de materias y profesores que no existen. Ahora solo muestra lo
+// que devuelve el backend, y si no hay nada lo dice.
 export default function PortalEstudiantil() {
   const location = useLocation();
   const { user } = useAuth();
   const isHomeView = location.pathname === '/dashboard/estudiante';
-  const nombreEstudiante = user?.nombres || 'Estudiante';
+
+  const [cursos, setCursos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isHomeView || !user?.id_usuario) return undefined;
+
+    let vigente = true;
+
+    listarMisCursosEstudiante()
+      .then((lista) => {
+        if (!vigente) return;
+        setCursos(lista);
+        setError('');
+      })
+      .catch((err) => {
+        if (vigente) setError(err.detail || 'No se pudieron cargar tus cursos');
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+
+    return () => {
+      vigente = false;
+    };
+  }, [isHomeView, user?.id_usuario]);
 
   if (!isHomeView) {
     return <Outlet />;
   }
 
+  const nombre = [user?.nombres, user?.apellidos].filter(Boolean).join(' ');
+
   return (
-    <>
-      
+    <main className="main">
+      <div className="hero">
+        <p className="hero-eyebrow">Seguimiento académico</p>
+        <h2 className="hero-name">{nombre ? `Hola, ${nombre}` : 'Hola'}</h2>
+        <p className="hero-sub">Consulta tus calificaciones y tu asistencia.</p>
+      </div>
 
-      <main className="main">
-        {/* Resumen principal del estudiante con contexto de bimestre y sección */}
-        <div className="hero">
-          <p className="hero-eyebrow">Año lectivo 2025–2026 · 3er Bimestre en curso</p>
-          <h2 className="hero-name">Bienvenido, {nombreEstudiante}</h2>
-          <p className="hero-sub">3ro de Bachillerato · Sección A · Colegio Lara Bonilla</p>
-
-          <div className="hero-stats">
-            <div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.5)', marginBottom: '4px' }}>Promedio general</div>
-              <div className="hero-avg">8.7</div>
-            </div>
-
-            <div className="hero-meta">
-              <div className="meta-item">
-                <div className="meta-label">Asignaturas</div>
-                <div className="meta-value">8</div>
-              </div>
-              <div className="meta-item">
-                <div className="meta-label">Aprobadas</div>
-                <div className="meta-value">7/8</div>
-              </div>
-              <div className="meta-item">
-                <div className="meta-label">Entrega urgente</div>
-                <div className="meta-value urgent-val">1</div>
-              </div>
-            </div>
-          </div>
+      <section className="cal-card">
+        <div className="cal-card-head">
+          <h3 className="cal-section-title">Mis cursos</h3>
+          <Link className="cal-btn secondary small" to="/dashboard/estudiante/calificaciones">
+            Ver mis calificaciones
+          </Link>
         </div>
 
-        {/* Contenedor con dos paneles: actividades próximas y estado de notas */}
-        <div className="two-col">
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                Próximas entregas y exámenes
-              </div>
-              <span className="urgent-badge">1 urgente</span>
-            </div>
+        {!user?.id_usuario && (
+          <p className="cal-error">
+            No se encontró tu identificador de usuario. Cierra sesión y vuelve a iniciarla.
+          </p>
+        )}
+        {cargando && user?.id_usuario && <p className="cal-hint">Cargando tus cursos...</p>}
+        {error && <p className="cal-error">{error}</p>}
 
-            <div className="delivery-list">
-              {/* Lista de entregas y tareas con tags de prioridad y fechas límite */}
-              <div className="delivery-item is-urgent">
-                <div className="clock-icon urgent-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </div>
-                <div className="delivery-body">
-                  <div className="delivery-tags">
-                    <span className="tag tag-lab">Laboratorio</span>
-                    <span className="delivery-subject">Química Orgánica · Prof. Núñez</span>
-                  </div>
-                  <div className="delivery-name">Informe de práctica: Reacciones de esterificación</div>
-                  <div className="delivery-date">2026-06-17</div>
-                </div>
-                <div className="time-chip chip-urgent">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                  </svg>
-                  2d
-                </div>
-              </div>
+        {!cargando && !error && cursos.length === 0 && user?.id_usuario && (
+          <p className="cal-empty">Todavía no tienes cursos matriculados.</p>
+        )}
 
-              <div className="delivery-item">
-                <div className="clock-icon warn-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </div>
-                <div className="delivery-body">
-                  <div className="delivery-tags">
-                    <span className="tag tag-proj">Proyecto</span>
-                    <span className="delivery-subject">Historia · Prof. Salazar</span>
-                  </div>
-                  <div className="delivery-name">Ensayo: Consecuencias de la Primera Guerra Mundial</div>
-                  <div className="delivery-date">2026-06-19</div>
-                </div>
-                <div className="time-chip chip-warn">4 días</div>
-              </div>
-
-              <div className="delivery-item">
-                <div className="clock-icon normal-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </div>
-                <div className="delivery-body">
-                  <div className="delivery-tags">
-                    <span className="tag tag-task">Tarea</span>
-                    <span className="delivery-subject">Inglés · Prof. Williams</span>
-                  </div>
-                  <div className="delivery-name">Writing: Opinion essay (250 words)</div>
-                  <div className="delivery-date">2026-06-20</div>
-                </div>
-                <div className="time-chip chip-ok">5 días</div>
+        {cursos.map((curso) => {
+          const docente = nombreDocente(curso);
+          return (
+            <div className="cal-seccion" key={curso.id_curso}>
+              <div className="cal-seccion-header">
+                <span className="cal-seccion-title-group">
+                  <span className="cal-seccion-name">{etiquetaCurso(curso)}</span>
+                  {docente && <span className="cal-seccion-docente">{docente}</span>}
+                </span>
+                <span className="cal-seccion-pct">{curso.periodo?.estado}</span>
               </div>
             </div>
-          </div>
-
-          {/* Panel de rendimiento académico con notas y barras de progreso */}
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
-                Mis notas · B3
-              </div>
-            </div>
-
-            <div className="grade-list">
-              {/* Filas de asignaturas con estado visual: aprobado, en progreso o en riesgo */}
-              <div className="grade-row">
-                <div className="subject-dot" style={{ background: '#3B82F6' }}></div>
-                <div className="grade-subject">Matemáticas</div>
-                <div className="grade-bar-wrap"><div className="grade-bar-fill fill-green" style={{ width: '92%' }}></div></div>
-                <div className="grade-num gn-green">9.2</div>
-                <div className="grade-status gs-pass">✓</div>
-              </div>
-
-              <div className="grade-row">
-                <div className="subject-dot" style={{ background: '#8B5CF6' }}></div>
-                <div className="grade-subject">Química Orgánica</div>
-                <div className="grade-bar-wrap"><div className="grade-bar-fill fill-green" style={{ width: '85%' }}></div></div>
-                <div className="grade-num gn-green">8.5</div>
-                <div className="grade-status gs-pass">✓</div>
-              </div>
-
-              <div className="grade-row">
-                <div className="subject-dot" style={{ background: 'var(--alert)' }}></div>
-                <div className="grade-subject">Ed. Física</div>
-                <div className="grade-bar-wrap"><div className="grade-bar-fill fill-red" style={{ width: '62%' }}></div></div>
-                <div className="grade-num gn-red">6.2</div>
-                <div className="grade-status gs-risk">!</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </main>
-    </>
+          );
+        })}
+      </section>
+    </main>
   );
 }

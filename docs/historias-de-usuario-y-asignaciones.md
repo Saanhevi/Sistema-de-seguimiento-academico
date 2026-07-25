@@ -21,7 +21,7 @@
 | ⬜ | HU7 | Como estudiante, quiero consultar mis inasistencias registradas, para conocer mi estado de asistencia. | Rafael, Samuel |
 | ⬜ | HU8 | Como profesor, quiero que el sistema calcule automáticamente el promedio de cada estudiante en una materia, para conocer su rendimiento académico. | Laura |
 | ⬜ | HU9 | Como profesor, quiero que el sistema calcule automáticamente el promedio grupal de una materia, para analizar el desempeño general del curso. | Laura |
-| ⬜ | HU10 | Como estudiante, quiero consultar mis calificaciones mostrando la materia, el profesor y las calificaciones obtenidas, para conocer mi desempeño académico. | Snehider |
+| ✅ | HU10 | Como estudiante, quiero consultar mis calificaciones mostrando la materia, el profesor y las calificaciones obtenidas, para conocer mi desempeño académico. | Snehider |
 | ⬜ | HU11 | Como estudiante, quiero consultar el porcentaje, nota, comentario, nombre de la entrega y estudiante asociado a cada calificación, para comprender el detalle de mis evaluaciones. | Snehider |
 | ⬜ | HU12 | Como profesor, quiero añadir estudiantes a mi materia, para gestionar correctamente los alumnos que la cursan. | Rafael |
 | ⬜ | HU13 | Como administrador del colegio, quiero bloquear a los profesores la posibilidad de subir, modificar o eliminar notas de un corte finalizado, para garantizar la integridad de las calificaciones. | Laura |

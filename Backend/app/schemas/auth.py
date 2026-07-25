@@ -12,6 +12,7 @@ class TokenResponse(BaseModel):
     rol: str
     nombres: str
     apellidos: str
+    id_usuario: int
 
 class CrearCuentaEstudiantilRequest(BaseModel):
     nombres : str 
