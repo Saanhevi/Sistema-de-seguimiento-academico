@@ -16,7 +16,6 @@ import DocenteReportes from "../modules/dashboard/pages/docente/DocenteReportes"
 import PortalEstudiantil from "../modules/dashboard/pages/estudiante/PortalEstudiantil";
 import EstudianteAsistencia from "../modules/dashboard/pages/estudiante/EstudianteAsistencia";
 import EstudiantePerfil from "../modules/dashboard/pages/estudiante/EstudiantePerfil";
-import EstudianteAsignaturas from "../modules/dashboard/pages/estudiante/EstudianteAsignaturas";
 import EstudianteCalificaciones from "../modules/dashboard/pages/estudiante/EstudianteCalificaciones";
 
 
@@ -83,7 +82,9 @@ export default function AppRouter() {
                     <Route path="estudiante" element={<PortalEstudiantil />}>
                         <Route index element={null} />
                         <Route path="asistencia" element={<EstudianteAsistencia />} />
-                        <Route path="asignaturas" element={<EstudianteAsignaturas />} />
+                        {/* "Mis Asignaturas" mostraba materias, docentes y notas
+                            inventadas; su función real la cubre "calificaciones". */}
+                        <Route path="asignaturas" element={<Navigate to="/dashboard/estudiante/calificaciones" replace />} />
                         <Route path="calificaciones" element={<EstudianteCalificaciones />} />
                         <Route path="perfil" element={<EstudiantePerfil />} />
                     </Route>

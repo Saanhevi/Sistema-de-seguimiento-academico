@@ -10,8 +10,14 @@ export function etiquetaCurso(curso) {
   return `${materia} · ${grado} · ${periodo}`;
 }
 
-/** Nombre completo del docente del curso, o null si el backend no lo envió. */
+/**
+ * Nombre completo del docente del curso, o null si el backend no lo envió.
+ * Se arma campo por campo (como etiquetaCurso) porque el backend puede mandar
+ * el docente con nombre/apellido en null si la fila Usuario está incompleta:
+ * interpolar directo produciría el literal "null null" en pantalla.
+ */
 export function nombreDocente(curso) {
-  if (!curso.docente) return null;
-  return `${curso.docente.nombre} ${curso.docente.apellido}`.trim();
+  const docente = curso?.docente;
+  if (!docente) return null;
+  return [docente.nombre, docente.apellido].filter(Boolean).join(" ") || null;
 }

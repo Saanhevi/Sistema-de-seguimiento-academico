@@ -19,13 +19,10 @@ class Docente(Base):
     usuario : Mapped["Usuario"] = relationship(back_populates="rol_docente")
     cursos: Mapped[list["Curso"]] = relationship(back_populates="docente")
 
-    @property
-    def nombre(self) -> str:
-        return self.usuario.nombres
-
-    @property
-    def apellido(self) -> str:
-        return self.usuario.apellidos
+    # El nombre y el apellido del docente viven en Usuario, no aquí. La derivación
+    # se hace en DocenteCursoResponse (app/schemas/curso.py) y no con @property:
+    # una propiedad Python sobre una clase mapeada es invisible para el query layer
+    # (Docente(nombre=...) revienta y where(Docente.nombre == ...) no filtra).
 
     def __repr__(self) -> str:
         return (

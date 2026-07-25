@@ -106,13 +106,30 @@ class CursoService:
         )
         return self.curso_repo.crear(curso)
 
-    def listar_cursos(self, id_docente=None, id_grado=None, id_periodo=None) -> list[Curso]:
+    def listar_cursos(self, id_docente=None, id_grado=None, id_periodo=None, usuario_actual=None) -> list[Curso]:
+        # RN-10a: un Estudiante solo ve los cursos de su grado y año de matrícula.
+        # Se ignora el id_grado recibido, igual que listar_matriculas ignora el
+        # id_estudiante recibido (RN-04): el alcance no se negocia con el cliente.
+        if usuario_actual is not None and usuario_actual.rol == "Estudiante":
+            return self.curso_repo.listar_para_estudiante(
+                usuario_actual.id_usuario, id_periodo=id_periodo
+            )
+
         return self.curso_repo.listar(id_docente=id_docente, id_grado=id_grado, id_periodo=id_periodo)
 
-    def obtener_curso(self, id_curso: int) -> Curso:
+    def obtener_curso(self, id_curso: int, usuario_actual=None) -> Curso:
         curso = self.curso_repo.buscar_por_id(id_curso)
         if not curso:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso no encontrado")
+
+        # RN-10c: sin esto un Estudiante podía recorrer ids y leer el docente de
+        # cualquier curso, esquivando el alcance que aplica listar_cursos. Se
+        # responde 404 (no 403) para no confirmar que el curso existe.
+        if usuario_actual is not None and usuario_actual.rol == "Estudiante":
+            suyos = self.curso_repo.listar_para_estudiante(usuario_actual.id_usuario)
+            if id_curso not in {c.id_curso for c in suyos}:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso no encontrado")
+
         return curso
 
     def crear_matricula(self, id_estudiante: int, id_grado: int, anio: int, usuario_actual=None) -> Matricula:
