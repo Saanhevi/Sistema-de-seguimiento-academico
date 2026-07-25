@@ -1,16 +1,23 @@
 import jwt
+from collections.abc import Generator
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.security import decode_access_token
 from app.repositories.usuario import UsuarioRepository
 from app.services.auth import AuthService
 from app.services.curso import CursoService
 from app.services.calificacion import CalificacionService
+from app.services.asistencia import AsistenciaService
 
 # Obtener una session
-def get_session():
-    return SessionLocal()
+def get_session() -> Generator[Session, None, None]:
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 # Obtener un servicio
 def get_auth_service(session = Depends(get_session)):
@@ -23,6 +30,9 @@ def get_curso_service(session = Depends(get_session)):
 
 def get_calificacion_service(session = Depends(get_session)):
     return CalificacionService(session)
+
+def get_asistencia_service(session = Depends(get_session)):
+    return AsistenciaService(session)
 
 # Esquema de autenticación: espera un header "Authorization: Bearer <token>"
 security_scheme = HTTPBearer()
