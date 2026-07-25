@@ -46,6 +46,14 @@ class CursoCreate(BaseModel):
     id_periodo: int
 
 
+class DocenteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_docente: int
+    nombre: str
+    apellido: str
+
+
 class CursoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +62,12 @@ class CursoResponse(BaseModel):
     id_grado: int
     id_materia: int
     id_periodo: int
+    # Anidados opcionales: Pydantic los lee de los relationship() del modelo Curso.
+    # Evitan que el cliente tenga que cruzar /api/grados, /api/materias y /api/periodos.
+    grado: Optional[GradoResponse] = None
+    materia: Optional[MateriaResponse] = None
+    periodo: Optional[PeriodoAcademicoResponse] = None
+    docente: Optional[DocenteResponse] = None
 
 
 class MatriculaCreate(BaseModel):

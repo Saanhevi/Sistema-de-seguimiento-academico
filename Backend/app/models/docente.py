@@ -18,7 +18,15 @@ class Docente(Base):
     
     usuario : Mapped["Usuario"] = relationship(back_populates="rol_docente")
     cursos: Mapped[list["Curso"]] = relationship(back_populates="docente")
-    
+
+    @property
+    def nombre(self) -> str:
+        return self.usuario.nombres
+
+    @property
+    def apellido(self) -> str:
+        return self.usuario.apellidos
+
     def __repr__(self) -> str:
         return (
             f"Docente("

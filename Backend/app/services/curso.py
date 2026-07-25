@@ -138,8 +138,11 @@ class CursoService:
         matricula = Matricula(id_estudiante=id_estudiante, id_grado=id_grado, anio=anio)
         return self.matricula_repo.crear(matricula)
 
-    def listar_matriculas(self, id_grado=None, anio=None) -> list[Matricula]:
-        return self.matricula_repo.listar(id_grado=id_grado, anio=anio)
+    def listar_matriculas(self, id_grado=None, anio=None, id_estudiante=None, usuario_actual=None) -> list[Matricula]:
+        # RN-04: un Estudiante solo puede consultar sus propias matrículas
+        if usuario_actual is not None and usuario_actual.rol == "Estudiante":
+            id_estudiante = usuario_actual.id_usuario
+        return self.matricula_repo.listar(id_grado=id_grado, anio=anio, id_estudiante=id_estudiante)
 
     def listar_estudiantes_por_grado(self, id_grado: int, anio: int | None = None) -> list[dict]:
         grado = self.grado_repo.buscar_por_id(id_grado)

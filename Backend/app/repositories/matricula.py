@@ -17,13 +17,15 @@ class MatriculaRepository:
             self.session.rollback()
             raise
 
-    def listar(self, id_grado=None, anio=None):
+    def listar(self, id_grado=None, anio=None, id_estudiante=None):
         query = select(Matricula)
 
         if id_grado is not None:
             query = query.where(Matricula.id_grado == id_grado)
         if anio is not None:
             query = query.where(Matricula.anio == anio)
+        if id_estudiante is not None:
+            query = query.where(Matricula.id_estudiante == id_estudiante)
 
         return self.session.execute(query).scalars().all()
 

@@ -17,6 +17,7 @@ import PortalEstudiantil from "../modules/dashboard/pages/estudiante/PortalEstud
 import EstudianteAsistencia from "../modules/dashboard/pages/estudiante/EstudianteAsistencia";
 import EstudiantePerfil from "../modules/dashboard/pages/estudiante/EstudiantePerfil";
 import EstudianteAsignaturas from "../modules/dashboard/pages/estudiante/EstudianteAsignaturas";
+import EstudianteCalificaciones from "../modules/dashboard/pages/estudiante/EstudianteCalificaciones";
 
 
 function RutaLogin() {
@@ -83,6 +84,7 @@ export default function AppRouter() {
                         <Route index element={null} />
                         <Route path="asistencia" element={<EstudianteAsistencia />} />
                         <Route path="asignaturas" element={<EstudianteAsignaturas />} />
+                        <Route path="calificaciones" element={<EstudianteCalificaciones />} />
                         <Route path="perfil" element={<EstudiantePerfil />} />
                     </Route>
                 </Route>
