@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import SeccionPanel from "../../../calificaciones/components/SeccionPanel";
-import { etiquetaCurso } from "../../../calificaciones/utils/cursos";
+import { etiquetaCurso, nombreDocente } from "../../../calificaciones/utils/cursos";
 import {
   listarActividades,
-  listarCursosDeGrado,
-  listarMisMatriculas,
+  listarMisCursosEstudiante,
   listarNotas
 } from "../../../calificaciones/services/calificacionService";
 
@@ -14,6 +13,7 @@ import {
  * cuando el estudiante lo expande, para no disparar todas las llamadas de golpe.
  */
 function CursoAcordeon({ curso }) {
+  const docente = nombreDocente(curso);
   const [abierto, setAbierto] = useState(false);
   const [seccionActiva, setSeccionActiva] = useState(null);
   const [actividades, setActividades] = useState([]);
@@ -73,7 +73,10 @@ function CursoAcordeon({ curso }) {
           }
         }}
       >
-        <span className="cal-seccion-name">{etiquetaCurso(curso)}</span>
+        <span className="cal-seccion-title-group">
+          <span className="cal-seccion-name">{etiquetaCurso(curso)}</span>
+          {docente && <span className="cal-seccion-docente">{docente}</span>}
+        </span>
         <span className="cal-seccion-pct">{abierto ? "▲" : "▼"}</span>
       </div>
 
@@ -108,17 +111,14 @@ export default function EstudianteCalificaciones() {
 
     let vigente = true;
 
-    listarMisMatriculas(user.id_usuario)
-      .then(async (matriculas) => {
+    // Una sola llamada: el backend ya acota a los cursos del grado y año de las
+    // matrículas del estudiante (RN-10a), así que no hay que descubrir sus grados
+    // primero ni deduplicar cursos de varias respuestas.
+    listarMisCursosEstudiante()
+      .then((lista) => {
         if (!vigente) return;
-        // Un estudiante puede tener matrícula en varios años; se juntan sus cursos.
-        const porGrado = await Promise.all(
-          matriculas.map((matricula) => listarCursosDeGrado(matricula.id_grado))
-        );
-        if (!vigente) return;
-        const unicos = new Map();
-        porGrado.flat().forEach((curso) => unicos.set(curso.id_curso, curso));
-        setCursos([...unicos.values()]);
+        setCursos(lista);
+        setError("");
       })
       .catch((err) => {
         if (vigente) setError(err.detail || "No se pudieron cargar tus cursos");

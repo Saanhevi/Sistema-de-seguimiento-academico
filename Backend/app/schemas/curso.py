@@ -1,5 +1,5 @@
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from typing import Any, Optional
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class GradoCreate(BaseModel):
@@ -46,6 +46,37 @@ class CursoCreate(BaseModel):
     id_periodo: int
 
 
+class DocenteCursoResponse(BaseModel):
+    """Docente tal como se muestra dentro de un curso (HU10: 'la materia, el profesor').
+
+    Nombre distinto al de `app.schemas.docente.DocenteResponse`, que es otra forma
+    (`id`/`nombres`/`apellidos`/`correo`/`estado`) usada por el módulo de profesores.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id_docente: int
+    # Opcionales a propósito (RN-10d): un docente sin fila Usuario degrada a null
+    # en vez de tumbar con un 500 la lista entera de cursos.
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _aplanar_usuario(cls, data: Any) -> Any:
+        # nombre/apellido viven en Usuario, no en Docente. Se aplanan aquí y no con
+        # un @property en el modelo ORM, que el query layer no puede usar.
+        if isinstance(data, dict):
+            return data
+
+        usuario = getattr(data, "usuario", None)
+        return {
+            "id_docente": getattr(data, "id_docente", None),
+            "nombre": getattr(usuario, "nombres", None),
+            "apellido": getattr(usuario, "apellidos", None),
+        }
+
+
 class CursoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,6 +90,7 @@ class CursoResponse(BaseModel):
     grado: Optional[GradoResponse] = None
     materia: Optional[MateriaResponse] = None
     periodo: Optional[PeriodoAcademicoResponse] = None
+    docente: Optional[DocenteCursoResponse] = None
 
 
 class MatriculaCreate(BaseModel):

@@ -12,9 +12,14 @@ async function listarMisCursos(idDocente) {
   }
 }
 
-async function listarCursosDeGrado(idGrado) {
+/**
+ * Cursos del estudiante autenticado. No lleva filtros: el backend aplica RN-10a
+ * y devuelve solo los cursos de su grado y año de matrícula (ignora cualquier
+ * id_grado que se le mande), así que el alcance no se decide en el cliente.
+ */
+async function listarMisCursosEstudiante() {
   try {
-    const response = await api.get("/api/cursos", { params: { id_grado: idGrado } });
+    const response = await api.get("/api/cursos");
     return response.data;
   } catch (error) {
     throw error.response?.data || ERROR_CONEXION;
@@ -95,7 +100,7 @@ async function listarMisMatriculas(idEstudiante) {
 
 export {
   listarMisCursos,
-  listarCursosDeGrado,
+  listarMisCursosEstudiante,
   listarSecciones,
   crearSeccion,
   listarActividades,

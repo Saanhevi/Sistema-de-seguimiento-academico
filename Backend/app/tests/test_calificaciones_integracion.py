@@ -125,6 +125,19 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
              "id_materia": cls.id_materia, "id_periodo": cls.id_periodo_cerrado},
         )["id_curso"]
 
+        # Mismo grado, pero un periodo de OTRO año. El estudiante no tiene matrícula
+        # en ese año, así que RN-10a debe dejar este curso fuera de su consulta:
+        # es el curso de la cohorte anterior del mismo grado.
+        cls.id_periodo_otro_anio = cls._crear(
+            "/api/periodos", cls.token_admin,
+            {"nombre": "Periodo IT", "anio": cls.anio - 1, "estado": "Abierto"},
+        )["id_periodo"]
+        cls.id_curso_otro_anio = cls._crear(
+            "/api/cursos", cls.token_admin,
+            {"id_docente": cls.id_docente, "id_grado": cls.id_grado,
+             "id_materia": cls.id_materia, "id_periodo": cls.id_periodo_otro_anio},
+        )["id_curso"]
+
         cls.id_matricula = cls._crear(
             "/api/matriculas", cls.token_admin,
             {"id_estudiante": cls.id_estudiante, "id_grado": cls.id_grado, "anio": cls.anio},
@@ -133,7 +146,8 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Borra lo creado respetando las FKs (notas -> actividades -> secciones -> cursos ...).
-        cursos = [getattr(cls, "id_curso", None), getattr(cls, "id_curso_cerrado", None)]
+        cursos = [getattr(cls, "id_curso", None), getattr(cls, "id_curso_cerrado", None),
+                  getattr(cls, "id_curso_otro_anio", None)]
         cursos = [c for c in cursos if c is not None]
         if not cursos:
             return
@@ -155,7 +169,8 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
                 if getattr(cls, "id_matricula", None) is not None:
                     session.execute(text("DELETE FROM matricula WHERE id_matricula = :m"), {"m": cls.id_matricula})
                 periodos = [p for p in (getattr(cls, "id_periodo_abierto", None),
-                                        getattr(cls, "id_periodo_cerrado", None)) if p is not None]
+                                        getattr(cls, "id_periodo_cerrado", None),
+                                        getattr(cls, "id_periodo_otro_anio", None)) if p is not None]
                 if periodos:
                     session.execute(text("DELETE FROM periodoacademico WHERE id_periodo = ANY(:p)"), {"p": periodos})
                 if getattr(cls, "id_materia", None) is not None:
@@ -227,6 +242,44 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
         )
         self.assertEqual(nota["calificacion"], 4.5)
         self.assertEqual(nota["id_estudiante"], self.id_estudiante)
+
+    def test_02b_estudiante_ve_sus_cursos_con_el_docente(self):
+        """HU10 / RN-10a: el estudiante consulta /api/cursos y recibe materia y profesor."""
+        status, cursos = _peticion("GET", "/api/cursos", token=self.token_estudiante)
+        self.assertEqual(status, 200)
+
+        por_id = {c["id_curso"]: c for c in cursos}
+        self.assertIn(self.id_curso, por_id, "el estudiante debería ver el curso de su grado y año")
+
+        curso = por_id[self.id_curso]
+        self.assertIsNotNone(curso["materia"], "HU10 exige la materia")
+        self.assertIsNotNone(curso["docente"], "HU10 exige el profesor")
+        self.assertEqual(curso["docente"]["id_docente"], self.id_docente)
+        self.assertTrue(curso["docente"]["nombre"], "el nombre del profesor no puede venir vacío")
+        self.assertTrue(curso["docente"]["apellido"])
+
+    def test_02c_estudiante_no_ve_cursos_de_otro_anio_ni_de_otro_grado(self):
+        """RN-10a: el alcance lo fija el backend, no el filtro que mande el cliente."""
+        status, cursos = _peticion("GET", "/api/cursos", token=self.token_estudiante)
+        self.assertEqual(status, 200)
+        ids = {c["id_curso"] for c in cursos}
+
+        # Mismo grado, año anterior (otra cohorte): no es suyo.
+        self.assertNotIn(self.id_curso_otro_anio, ids)
+        # Todo lo que ve es de un grado en el que está matriculado.
+        self.assertTrue(all(c["id_grado"] == self.id_grado for c in cursos))
+
+        # Y pedir explícitamente otro grado no amplía el alcance.
+        status, cursos_filtrados = _peticion(
+            "GET", "/api/cursos?id_grado=999999", token=self.token_estudiante
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual({c["id_curso"] for c in cursos_filtrados}, ids)
+
+    def test_02d_endpoint_de_estudiante_por_id_no_existe(self):
+        """Se retiró GET /api/estudiantes/{id}: no tenía consumidor y filtraba correos."""
+        status, _ = _peticion("GET", f"/api/estudiantes/{self.id_estudiante}", token=self.token_docente)
+        self.assertEqual(status, 404)
 
     def test_03_estudiante_solo_ve_sus_notas(self):
         """RN-04: el estudiante consulta la actividad y ve únicamente su propia nota."""
