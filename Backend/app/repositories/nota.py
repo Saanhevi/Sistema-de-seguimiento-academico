@@ -1,5 +1,6 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models.nota import Nota
+from app.models.actividad_evaluativa import ActividadEvaluativa
 
 
 class NotaRepository:
@@ -33,4 +34,26 @@ class NotaRepository:
             Nota.id_actividad == id_actividad,
             Nota.id_estudiante == id_estudiante,
         )
-        return self.session.execute(query).scalars().first()
+        return self.session.execute(query).scalars().first() 
+    def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int) -> float:
+        from app.models.actividad_evaluativa import ActividadEvaluativa
+        from app.models.seccion_porcentaje import SeccionPorcentaje
+        from app.models.curso import Curso
+
+        notas = (
+            self.session.query(Nota)
+            .join(ActividadEvaluativa, Nota.id_actividad == ActividadEvaluativa.id_actividad)
+            .join(SeccionPorcentaje, ActividadEvaluativa.id_seccion == SeccionPorcentaje.id_seccion)
+            .join(Curso, SeccionPorcentaje.id_curso == Curso.id_curso)
+            .filter(
+                Nota.id_estudiante == id_estudiante,
+                Curso.id_materia == id_materia
+            )
+            .all()
+        )
+
+        if not notas:
+            return 0.0
+
+        calificaciones = [float(n.calificacion) for n in notas if n.calificacion is not None]
+        return round(sum(calificaciones) / len(calificaciones), 2) if calificaciones else 0.0   

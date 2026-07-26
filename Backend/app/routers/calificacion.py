@@ -77,3 +77,18 @@ def listar_notas(
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
     return service.listar_notas(id_actividad=id_actividad, usuario=usuario)
+@router.get( "/notas/promedio", dependencies=[Depends(require_role("Administrador", "Docente", "Estudiante"))]
+)
+def obtener_promedio_estudiante_materia(
+    id_estudiante: int = Query(..., gt=0, le=ID_MAXIMO),
+    id_materia: int = Query(..., gt=0, le=ID_MAXIMO),
+    service: CalificacionService = Depends(get_calificacion_service),
+):
+    #Retorna el promedio de notas de un estudiante en una materia específica.
+    
+    promedio = service.obtener_promedio_estudiante_materia(id_estudiante, id_materia)
+    return {
+        "id_estudiante": id_estudiante,
+        "id_materia": id_materia,
+        "promedio": promedio
+    }
