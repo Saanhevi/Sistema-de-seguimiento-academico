@@ -4,6 +4,7 @@ from unittest.mock import Mock
 from fastapi import HTTPException
 
 from app.models.docente import Docente
+from app.models.estudiante import Estudiante
 from app.models.usuario import Usuario
 from app.services.curso import CursoService
 
@@ -32,6 +33,20 @@ class CursoServiceRegressionTests(unittest.TestCase):
             self.service.crear_periodo("Periodo 1", -1, "Abierto")
 
         self.assertEqual(exc.exception.status_code, 400)
+
+    def test_agregar_estudiante_a_curso_crea_matricula(self):
+        curso = Mock(id_curso=7, id_docente=1, id_grado=2)
+        curso.periodo = Mock(anio=2026)
+        self.service.curso_repo.buscar_por_id = Mock(return_value=curso)
+        self.session.get.side_effect = lambda model, pk: Estudiante(id_estudiante=5, estado="Activo") if model is Estudiante else Usuario(id_usuario=5, rol="Estudiante")
+        self.session.execute.return_value.scalar_one_or_none.return_value = None
+        self.service.matricula_repo.crear = Mock(return_value=Mock(id_matricula=10))
+
+        usuario_actual = Usuario(id_usuario=1, rol="Docente")
+        resultado = self.service.agregar_estudiante_a_curso(7, 5, usuario_actual=usuario_actual)
+
+        self.assertEqual(resultado["id_estudiante"], 5)
+        self.service.matricula_repo.crear.assert_called_once()
 
 
 if __name__ == "__main__":
