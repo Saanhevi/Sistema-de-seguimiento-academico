@@ -148,6 +148,122 @@ class SeccionFalsa:
     """Objeto mínimo para comprobar que NO se le agrega el atributo advertencia."""
 
 
+class ActualizarNotaTests(unittest.TestCase):
+    """PUT /api/notas debe actualizar solo notas existentes."""
+
+    def setUp(self):
+        self.session = Mock()
+        self.service = CalificacionService(self.session)
+        self.service.actividad_repo = Mock()
+        self.service.nota_repo = Mock()
+        self.service.actividad_repo.buscar_por_id.return_value = _actividad()
+        self.service._validar_pertenencia_curso = Mock()
+        self.service._validar_calificacion = Mock()
+        self.service._validar_estudiante = Mock()
+        self.service._validar_periodo_abierto = Mock()
+        self.service._bloquear_nota = Mock()
+
+    def test_actualizar_nota_rechaza_si_no_existe(self):
+        self.service.nota_repo.buscar_por_actividad_y_estudiante.return_value = None
+
+        with self.assertRaises(HTTPException) as exc:
+            self.service.actualizar_nota(10, 42, 4.0, "Sin nota", Usuario(id_usuario=3, rol="Docente"))
+
+        self.assertEqual(exc.exception.status_code, 404)
+
+    def test_actualizar_nota_modifica_nota_existente(self):
+        nota = Mock(calificacion=3.0, comentario="vieja")
+        self.service.nota_repo.buscar_por_actividad_y_estudiante.return_value = nota
+
+        resultado = self.service.actualizar_nota(10, 42, 4.5, "mejor", Usuario(id_usuario=3, rol="Docente"))
+
+        self.assertEqual(resultado.calificacion, 4.5)
+        self.assertEqual(resultado.comentario, "mejor")
+        self.service._bloquear_nota.assert_called_once_with(10, 42)
+        self.session.flush.assert_called_once()
+        self.session.commit.assert_called_once()
+        self.session.refresh.assert_called_once_with(nota)
+
+    def test_cargar_notas_masivo_preserva_comentario_existente(self):
+        nota = Mock(calificacion=3.0, comentario="Buen trabajo")
+        self.service.nota_repo.buscar_por_actividad_y_estudiante.return_value = nota
+        self.service.nota_repo.agregar = Mock()
+
+        resultado = self.service.cargar_notas_masivo(
+            10,
+            [{"id_estudiante": 42, "calificacion": 4.0}],
+            Usuario(id_usuario=3, rol="Docente"),
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0].comentario, "Buen trabajo")
+        self.service.nota_repo.buscar_por_actividad_y_estudiante.assert_called_once_with(10, 42)
+        self.session.commit.assert_called_once()
+
+    def test_bloquear_nota_adquiere_lock_de_actividad_y_nota(self):
+        session = Mock()
+        service = CalificacionService(session)
+
+        service._bloquear_nota(10, 42)
+
+        self.assertEqual(session.execute.call_count, 2)
+        self.assertEqual(session.execute.call_args_list[0][0][1], {"id_actividad": 10})
+        self.assertEqual(session.execute.call_args_list[1][0][1], {"id_actividad": 10, "id_estudiante": 42})
+
+
+class EliminacionTransaccionalTests(unittest.TestCase):
+    """HU16: las eliminaciones deben revertir la transacción ante fallos."""
+
+    def test_eliminar_actividad_hace_rollback_si_falla(self):
+        session = Mock()
+        service = CalificacionService(session)
+        service.actividad_repo = Mock()
+        service.nota_repo = Mock()
+        service.actividad_repo.buscar_por_id.return_value = Mock(id_actividad=7, seccion=Mock(curso=_curso()))
+        session.execute.return_value = Mock(scalars=Mock(all=Mock(return_value=[])))
+        service.nota_repo.borrar_por_actividad.side_effect = RuntimeError("boom")
+
+        with self.assertRaises(RuntimeError):
+            service.eliminar_actividad(7, Usuario(id_usuario=3, rol="Docente"))
+
+        session.rollback.assert_called_once()
+
+    def test_eliminar_seccion_llama_borrar_por_actividades(self):
+        session = Mock()
+        service = CalificacionService(session)
+        service.seccion_repo = Mock()
+        service.actividad_repo = Mock()
+        service.nota_repo = Mock()
+        seccion = Mock(id_seccion=11, curso=_curso())
+        seccion.curso.periodo = Mock(estado="Abierto")
+        service.seccion_repo.buscar_por_id.return_value = seccion
+        service.actividad_repo.listar.return_value = [Mock(id_actividad=21), Mock(id_actividad=22)]
+        session.execute.return_value = Mock(scalars=Mock(all=Mock(return_value=[])))
+
+        service.eliminar_seccion(11, Usuario(id_usuario=3, rol="Docente"))
+
+        service.nota_repo.borrar_por_actividades.assert_called_once_with([21, 22])
+        service.nota_repo.borrar_por_actividad.assert_not_called()
+
+    def test_eliminar_seccion_hace_rollback_si_falla(self):
+        session = Mock()
+        service = CalificacionService(session)
+        service.seccion_repo = Mock()
+        service.actividad_repo = Mock()
+        service.nota_repo = Mock()
+        seccion = Mock(id_seccion=11, curso=_curso())
+        seccion.curso.periodo = Mock(estado="Abierto")
+        service.seccion_repo.buscar_por_id.return_value = seccion
+        service.actividad_repo.listar.return_value = [Mock(id_actividad=21)]
+        session.execute.return_value = Mock(scalars=Mock(all=Mock(return_value=[])))
+        service.nota_repo.borrar_por_actividades.side_effect = RuntimeError("boom")
+
+        with self.assertRaises(RuntimeError):
+            service.eliminar_seccion(11, Usuario(id_usuario=3, rol="Docente"))
+
+        session.rollback.assert_called_once()
+
+
 class ListarNotasRolTests(unittest.TestCase):
     """RN-04 y RN-03 en la ruta de lectura."""
 

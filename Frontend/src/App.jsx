@@ -9,6 +9,7 @@ import "./styles/Estudiante.css";
 import "./styles/Login.css";
 import "./styles/Cursos.css";
 import "./styles/Calificaciones.css";
+import "./styles/EstudiantesAdmin.css";
 import AppRouter from "./routes/AppRouter";
 
 export default function App() {
