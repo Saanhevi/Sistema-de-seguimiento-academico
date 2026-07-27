@@ -30,7 +30,7 @@ def listar_secciones(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
-    return service.listar_secciones(id_curso=id_curso)
+    return service.listar_secciones(id_curso=id_curso, usuario=usuario)
 
 
 @router.post("/actividades", response_model=ActividadEvaluativaResponse)
@@ -48,7 +48,7 @@ def listar_actividades(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
-    return service.listar_actividades(id_seccion=id_seccion)
+    return service.listar_actividades(id_seccion=id_seccion, usuario=usuario)
 
 
 @router.post("/notas/carga-masiva", response_model=list[NotaResponse])

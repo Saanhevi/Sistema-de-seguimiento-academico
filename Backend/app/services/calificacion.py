@@ -32,6 +32,23 @@ class CalificacionService:
         if usuario.rol == "Docente" and curso.id_docente != usuario.id_usuario:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso sobre este curso")
 
+    def _cursos_visibles(self, usuario: Usuario | None) -> set[int] | None:
+        """Ids de curso que el usuario puede leer, o None si no tiene restricción.
+
+        Es la versión de lectura de _validar_pertenencia_curso: los listados no
+        reciben un curso concreto que validar, así que necesitan el conjunto
+        completo para acotar la consulta. Administrador no tiene restricción;
+        Docente ve los cursos que dicta (RN-03) y Estudiante los de su grado y
+        año de matrícula (RN-10a).
+        """
+        if usuario is None or usuario.rol == "Administrador":
+            return None
+        if usuario.rol == "Docente":
+            cursos = self.curso_repo.listar(id_docente=usuario.id_usuario)
+        else:
+            cursos = self.curso_repo.listar_para_estudiante(usuario.id_usuario)
+        return {curso.id_curso for curso in cursos}
+
     # --- Secciones ---
 
     def crear_seccion(self, nombre_seccion: str, porcentaje: float, id_curso: int, usuario: Usuario) -> SeccionPorcentaje:
@@ -61,8 +78,8 @@ class CalificacionService:
 
         return seccion
 
-    def listar_secciones(self, id_curso: int | None = None) -> list[SeccionPorcentaje]:
-        return self.seccion_repo.listar(id_curso=id_curso)
+    def listar_secciones(self, id_curso: int | None = None, usuario: Usuario | None = None) -> list[SeccionPorcentaje]:
+        return self.seccion_repo.listar(id_curso=id_curso, ids_curso=self._cursos_visibles(usuario))
 
     # --- Actividades ---
 
@@ -81,8 +98,8 @@ class CalificacionService:
         actividad = ActividadEvaluativa(nombre=nombre_limpio, fecha=fecha, id_seccion=id_seccion)
         return self.actividad_repo.crear(actividad)
 
-    def listar_actividades(self, id_seccion: int | None = None) -> list[ActividadEvaluativa]:
-        return self.actividad_repo.listar(id_seccion=id_seccion)
+    def listar_actividades(self, id_seccion: int | None = None, usuario: Usuario | None = None) -> list[ActividadEvaluativa]:
+        return self.actividad_repo.listar(id_seccion=id_seccion, ids_curso=self._cursos_visibles(usuario))
 
     # --- Notas ---
 
@@ -180,7 +197,14 @@ class CalificacionService:
     def listar_notas(self, id_actividad: int | None, usuario: Usuario) -> list[Nota]:
         # RN-04: un Estudiante solo puede ver sus propias notas
         id_estudiante_filtro = usuario.id_usuario if usuario.rol == "Estudiante" else None
-        return self.nota_repo.listar(id_actividad=id_actividad, id_estudiante=id_estudiante_filtro)
+        # RN-03: un Docente solo puede ver las notas de los cursos que dicta. Sin este
+        # filtro, GET /api/notas sin id_actividad devolvía todas las notas del colegio.
+        id_docente_filtro = usuario.id_usuario if usuario.rol == "Docente" else None
+        return self.nota_repo.listar(
+            id_actividad=id_actividad,
+            id_estudiante=id_estudiante_filtro,
+            id_docente=id_docente_filtro,
+        )
    
     def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int) -> float:
         return self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia)

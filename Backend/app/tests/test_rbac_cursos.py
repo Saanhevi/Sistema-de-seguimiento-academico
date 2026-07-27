@@ -20,7 +20,13 @@ os.environ.setdefault("ALGORITHM", "HS256")
 os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 
 from fastapi.testclient import TestClient
+from app.core.dependencies import get_current_user
 from app.main import app
+
+
+class UsuarioEstudiante:
+    id_usuario = 42
+    rol = "Estudiante"
 
 
 class RbacCursosTests(unittest.TestCase):
@@ -39,6 +45,20 @@ class RbacCursosTests(unittest.TestCase):
             with self.subTest(ruta=ruta):
                 respuesta = self.client.get(ruta)
                 self.assertIn(respuesta.status_code, {401, 403})
+
+    def test_listado_de_estudiantes_del_grado_rechaza_al_estudiante(self):
+        """El listado incluye correos y no tiene consumidor estudiantil.
+
+        Con el rol Estudiante permitido bastaba con recorrer id_grado para extraer
+        el directorio del colegio, igual que pasaba con GET /api/estudiantes/{id}.
+        """
+        app.dependency_overrides[get_current_user] = lambda: UsuarioEstudiante()
+        try:
+            respuesta = self.client.get("/api/grados/1/estudiantes")
+        finally:
+            app.dependency_overrides.clear()
+
+        self.assertEqual(respuesta.status_code, 403)
 
     def test_estudiante_por_id_ya_no_existe(self):
         """Se retiró GET /api/estudiantes/{id}: no tenía consumidor y filtraba correos.

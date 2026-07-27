@@ -1,6 +1,8 @@
 from sqlalchemy import select, func
 from app.models.nota import Nota
 from app.models.actividad_evaluativa import ActividadEvaluativa
+from app.models.seccion_porcentaje import SeccionPorcentaje
+from app.models.curso import Curso
 
 
 class NotaRepository:
@@ -15,13 +17,21 @@ class NotaRepository:
         self.session.flush()
         return nota
 
-    def listar(self, id_actividad=None, id_estudiante=None):
+    def listar(self, id_actividad=None, id_estudiante=None, id_docente=None):
         query = select(Nota)
 
         if id_actividad is not None:
             query = query.where(Nota.id_actividad == id_actividad)
         if id_estudiante is not None:
             query = query.where(Nota.id_estudiante == id_estudiante)
+        if id_docente is not None:
+            # RN-03: solo las notas de actividades que cuelgan de un curso del docente.
+            query = (
+                query.join(ActividadEvaluativa, ActividadEvaluativa.id_actividad == Nota.id_actividad)
+                .join(SeccionPorcentaje, SeccionPorcentaje.id_seccion == ActividadEvaluativa.id_seccion)
+                .join(Curso, Curso.id_curso == SeccionPorcentaje.id_curso)
+                .where(Curso.id_docente == id_docente)
+            )
 
         return self.session.execute(query).scalars().all()
 
