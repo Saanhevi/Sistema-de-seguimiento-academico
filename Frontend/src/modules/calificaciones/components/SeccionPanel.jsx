@@ -190,17 +190,25 @@ export default function SeccionPanel({
                     <p className="cal-hint">Esta sección aún no tiene actividades.</p>
                   ) : (
                     <ul className="cal-actividad-list">
-                      {actividades.map((actividad) => (
-                        <li className="cal-actividad-item" key={actividad.id_actividad}>
-                          <span>{actividad.nombre}</span>
-                          <span className="cal-actividad-fecha">{actividad.fecha}</span>
-                          {notaPorActividad && (
-                            <span className={`cal-badge ${claseBadge(notaPorActividad[actividad.id_actividad])}`}>
-                              {formatearNota(notaPorActividad[actividad.id_actividad])}
-                            </span>
-                          )}
-                        </li>
-                      ))}
+                      {actividades.map((actividad) => {
+                        const nota = notaPorActividad?.[actividad.id_actividad];
+                        return (
+                          <li className="cal-actividad-item" key={actividad.id_actividad}>
+                            <span>{actividad.nombre}</span>
+                            <span className="cal-actividad-fecha">{actividad.fecha}</span>
+                            {nota && (
+                              <>
+                                <span className={`cal-badge ${claseBadge(nota.calificacion)}`}>
+                                  {formatearNota(nota.calificacion)}
+                                </span>
+                                {nota.comentario && (
+                                  <p className="cal-actividad-comment">{nota.comentario}</p>
+                                )}
+                              </>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
