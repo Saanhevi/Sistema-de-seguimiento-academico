@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import "../styles/Asistencia.css";
 
+const ESTADOS_ASISTENCIA = ["Presente", "Ausente", "Retardo", "Excusa"];
+
 export default function AsistenciaTable({ asistencias, onGuardar }) {
     const [lista, setLista] = useState([]);
 
@@ -56,9 +58,11 @@ export default function AsistenciaTable({ asistencias, onGuardar }) {
                                         cambiarEstado(estudiante.id_estudiante, e.target.value)
                                     }
                                 >
-                                    <option value="Presente">Presente</option>
-                                    <option value="Ausente">Ausente</option>
-                                    <option value="Tardanza">Tardanza</option>
+                                    {ESTADOS_ASISTENCIA.map((estado) => (
+                                        <option key={estado} value={estado}>
+                                            {estado}
+                                        </option>
+                                    ))}
                                 </select>
                             </td>
                         </tr>

@@ -109,26 +109,29 @@ class AsistenciaService:
         
 
     def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
-        try:
-            for registro in lista_asistencia:
-                filas = self.asistencia_repository.actualizar_registro_asistencia(
-                    id_dia,
-                    registro.id_estudiante, 
-                    registro.estado
-                )
+         try:
+             for registro in lista_asistencia:
+                 filas = self.asistencia_repository.actualizar_registro_asistencia(
+                     id_dia,
+                     registro.id_estudiante, 
+                     registro.estado
+                 )
 
-                if filas == 0:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"El estudiante {registro.id_estudiante} no pertenece a esta lista."
-                    )
-                
-            self.session.commit()
-            return {"mensaje" : "Actualizacion correcta"}
-            
-        except SQLAlchemyError:
-            self.session.rollback()
-            raise
+                 if filas == 0:
+                     raise HTTPException(
+                         status_code=404,
+                         detail=f"El estudiante {registro.id_estudiante} no pertenece a esta lista."
+                     )
+                 
+             self.session.commit()
+             return {"mensaje" : "Actualizacion correcta"}
+             
+         except SQLAlchemyError as e:
+             self.session.rollback()
+             raise HTTPException(
+                 status_code=400,
+                 detail="Estado de asistencia inválido. Valores permitidos: Presente, Ausente, Retardo, Excusa."
+             )
     
     def consultar_asistencias_estudiante(self, id_estudiante):
         registros_asistencias = self.asistencia_repository.listar_historial_estudiante(id_estudiante)
