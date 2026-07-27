@@ -92,3 +92,13 @@ def obtener_promedio_estudiante_materia(
         "id_materia": id_materia,
         "promedio": promedio
     }
+@router.get("/materia/{id_materia}/promedio-grupal", summary="Obtener promedio grupal de una materia")
+def obtener_promedio_grupal_materia(
+    id_materia: int,
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    #Calcula el promedio general de todos los estudiantes en una materia específica,basado en los cursos que dicta el docente autenticado.
+   
+    promedio = service.obtener_promedio_grupal_materia(id_materia, usuario)
+    return {"id_materia": id_materia, "promedio_grupal": promedio}
