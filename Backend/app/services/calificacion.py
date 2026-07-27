@@ -104,6 +104,27 @@ class CalificacionService:
         periodo_estado = actividad.seccion.curso.periodo.estado
         if periodo_estado != "Abierto":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El período académico de este curso no está abierto")
+    
+    def _validar_bloqueos(self, actividad: ActividadEvaluativa, usuario: Usuario) -> None:
+        # Si es Administrador, esta regla específica de HU13/HU18 no lo bloquea
+        if usuario.rol == "Administrador":
+            return
+
+        # HU13: Validar estado del corte (SeccionPorcentaje)
+        seccion = actividad.seccion
+        if getattr(seccion, "estado", "Abierto") == "Cerrado":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="HU13: No se pueden registrar o modificar notas de un corte finalizado"
+            )
+
+        # HU18: Validar estado del periodo (para dar el mensaje específico al Docente)
+        periodo = seccion.curso.periodo
+        if periodo.estado != "Abierto":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail=f"HU18: No se pueden registrar o modificar notas de un período finalizado ({periodo.anio})"
+            )
 
     def _bloquear_nota(self, id_actividad: int, id_estudiante: int) -> None:
         # RN-f: Nota no tiene constraint único en (id_actividad, id_estudiante) en el esquema;
@@ -137,6 +158,7 @@ class CalificacionService:
         if not actividad:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
 
+        self._validar_bloqueos(actividad, usuario)
         self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
         self._validar_calificacion(calificacion)
         self._validar_estudiante(id_estudiante)
@@ -152,6 +174,7 @@ class CalificacionService:
         if not actividad:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
 
+        self._validar_bloqueos(actividad, usuario)
         self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
         self._validar_periodo_abierto(actividad)
 
