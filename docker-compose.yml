@@ -60,7 +60,7 @@ services:
     volumes:
       - ./Backend:/app
     working_dir: /app
-    command: ["python", "-m", "app.tests.crear_usuario_test"]
+    command: ["python", "-m", "scripts"]
     profiles:
       - seed
 
