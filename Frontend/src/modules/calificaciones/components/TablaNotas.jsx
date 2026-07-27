@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listarEstudiantesDeGrado, listarNotas, registrarNota } from "../services/calificacionService";
+import { listarEstudiantesDeGrado, listarNotas, actualizarNota } from "../services/calificacionService";
 import { claseBadge, formatearNota, promedioSimple } from "../utils/notas";
 import CargaMasivaModal from "./CargaMasivaModal";
 
@@ -95,7 +95,7 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
       return;
     }
     try {
-      const nota = await registrarNota({
+      const nota = await actualizarNota({
         id_actividad: idActividad,
         id_estudiante: idEstudiante,
         calificacion,

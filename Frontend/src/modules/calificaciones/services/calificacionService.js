@@ -80,6 +80,31 @@ async function registrarNota(data) {
   }
 }
 
+async function actualizarNota(data) {
+  try {
+    const response = await api.put("/api/notas", data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || ERROR_CONEXION;
+  }
+}
+
+async function eliminarActividad(idActividad) {
+  try {
+    await api.delete(`/api/actividades/${idActividad}`);
+  } catch (error) {
+    throw error.response?.data || ERROR_CONEXION;
+  }
+}
+
+async function eliminarSeccion(idSeccion) {
+  try {
+    await api.delete(`/api/secciones/${idSeccion}`);
+  } catch (error) {
+    throw error.response?.data || ERROR_CONEXION;
+  }
+}
+
 async function cargaMasiva(data) {
   try {
     const response = await api.post("/api/notas/carga-masiva", data);
@@ -110,5 +135,8 @@ export {
   cargaMasiva,
   listarMisMatriculas,
   // Reexportada desde cursoService para no duplicar la llamada al mismo endpoint.
-  listarEstudiantesDeGrado
+  listarEstudiantesDeGrado,
+  actualizarNota,
+  eliminarActividad,
+  eliminarSeccion
 };
