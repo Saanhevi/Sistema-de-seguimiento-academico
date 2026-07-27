@@ -67,6 +67,47 @@ class ListarMatriculasTests(unittest.TestCase):
         )
 
 
+class ListarEstudiantesPorGradoAlcanceTests(unittest.TestCase):
+    """RN-03: el listado expone nombres y correos, así que el Docente solo puede
+    pedirlo para los grados a los que dicta algún curso."""
+
+    def setUp(self):
+        self.service = CursoService(Mock())
+        self.service.grado_repo = Mock()
+        self.service.grado_repo.buscar_por_id.return_value = Grado(id_grado=3, nombre="10°")
+        self.service.curso_repo = Mock()
+        self.service.session = Mock()
+        self.service.session.execute.return_value.all.return_value = []
+
+    def test_docente_sin_curso_en_el_grado_recibe_404(self):
+        self.service.curso_repo.listar.return_value = []
+        usuario = Usuario(id_usuario=9, rol="Docente")
+
+        with self.assertRaises(HTTPException) as contexto:
+            self.service.listar_estudiantes_por_grado(id_grado=3, usuario_actual=usuario)
+
+        # 404 y no 403: no se confirma que el grado exista.
+        self.assertEqual(contexto.exception.status_code, 404)
+        self.service.session.execute.assert_not_called()
+
+    def test_docente_con_curso_en_el_grado_obtiene_el_listado(self):
+        self.service.curso_repo.listar.return_value = [Curso(id_curso=1, id_docente=9, id_grado=3)]
+        usuario = Usuario(id_usuario=9, rol="Docente")
+
+        resultado = self.service.listar_estudiantes_por_grado(id_grado=3, usuario_actual=usuario)
+
+        self.assertEqual(resultado, [])
+        self.service.curso_repo.listar.assert_called_once_with(id_docente=9, id_grado=3)
+
+    def test_administrador_no_tiene_restriccion_de_grado(self):
+        usuario = Usuario(id_usuario=1, rol="Administrador")
+
+        resultado = self.service.listar_estudiantes_por_grado(id_grado=3, usuario_actual=usuario)
+
+        self.assertEqual(resultado, [])
+        self.service.curso_repo.listar.assert_not_called()
+
+
 class ListarCursosAlcanceTests(unittest.TestCase):
     """RN-10a (HU10): el Estudiante solo ve los cursos de su grado y año de matrícula."""
 

@@ -149,7 +149,7 @@ class SeccionFalsa:
 
 
 class ListarNotasRolTests(unittest.TestCase):
-    """RN-04."""
+    """RN-04 y RN-03 en la ruta de lectura."""
 
     def setUp(self):
         self.service = CalificacionService(Mock())
@@ -159,12 +159,33 @@ class ListarNotasRolTests(unittest.TestCase):
     def test_estudiante_solo_ve_sus_notas(self):
         estudiante = Usuario(id_usuario=42, rol="Estudiante")
         self.service.listar_notas(id_actividad=8, usuario=estudiante)
-        self.service.nota_repo.listar.assert_called_once_with(id_actividad=8, id_estudiante=42)
+        self.service.nota_repo.listar.assert_called_once_with(
+            id_actividad=8, id_estudiante=42, id_docente=None
+        )
 
     def test_docente_ve_todas_las_notas_de_la_actividad(self):
         docente = Usuario(id_usuario=3, rol="Docente")
         self.service.listar_notas(id_actividad=8, usuario=docente)
-        self.service.nota_repo.listar.assert_called_once_with(id_actividad=8, id_estudiante=None)
+        # No se acota por estudiante (ve a todo el curso), pero sí por docente.
+        self.service.nota_repo.listar.assert_called_once_with(
+            id_actividad=8, id_estudiante=None, id_docente=3
+        )
+
+    def test_docente_sin_actividad_sigue_acotado_a_sus_cursos(self):
+        # RN-03: sin este filtro, GET /api/notas sin id_actividad degeneraba en un
+        # select(Nota) sin cláusulas y devolvía todas las notas de la institución.
+        docente = Usuario(id_usuario=3, rol="Docente")
+        self.service.listar_notas(id_actividad=None, usuario=docente)
+        self.service.nota_repo.listar.assert_called_once_with(
+            id_actividad=None, id_estudiante=None, id_docente=3
+        )
+
+    def test_administrador_no_tiene_restriccion(self):
+        admin = Usuario(id_usuario=1, rol="Administrador")
+        self.service.listar_notas(id_actividad=None, usuario=admin)
+        self.service.nota_repo.listar.assert_called_once_with(
+            id_actividad=None, id_estudiante=None, id_docente=None
+        )
 
 
 if __name__ == "__main__":

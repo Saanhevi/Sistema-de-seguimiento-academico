@@ -13,11 +13,16 @@ class SeccionPorcentajeRepository:
         self.session.refresh(seccion)
         return seccion
 
-    def listar(self, id_curso=None):
+    def listar(self, id_curso=None, ids_curso=None):
         query = select(SeccionPorcentaje)
 
         if id_curso is not None:
             query = query.where(SeccionPorcentaje.id_curso == id_curso)
+        # ids_curso acota el listado a los cursos que el usuario puede leer.
+        # Una colección vacía es significativa (no ve ningún curso), así que se
+        # compara contra None y no por veracidad.
+        if ids_curso is not None:
+            query = query.where(SeccionPorcentaje.id_curso.in_(ids_curso))
 
         return self.session.execute(query).scalars().all()
 

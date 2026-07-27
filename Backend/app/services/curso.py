@@ -224,10 +224,19 @@ class CursoService:
             id_estudiante = usuario_actual.id_usuario
         return self.matricula_repo.listar(id_grado=id_grado, anio=anio, id_estudiante=id_estudiante)
 
-    def listar_estudiantes_por_grado(self, id_grado: int, anio: int | None = None) -> list[dict]:
+    def listar_estudiantes_por_grado(self, id_grado: int, anio: int | None = None, usuario_actual=None) -> list[dict]:
         grado = self.grado_repo.buscar_por_id(id_grado)
         if not grado:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grado no encontrado")
+
+        # RN-03: el listado incluye nombres y correos, así que un Docente solo puede
+        # pedirlo para los grados a los que le dicta algún curso. Sin esto bastaba con
+        # recorrer id_grado para extraer el directorio completo del colegio. Se responde
+        # 404 (no 403), igual que obtener_curso, para no confirmar que el grado existe.
+        if usuario_actual is not None and usuario_actual.rol == "Docente":
+            cursos_del_docente = self.curso_repo.listar(id_docente=usuario_actual.id_usuario, id_grado=id_grado)
+            if not cursos_del_docente:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grado no encontrado")
 
         query = (
             select(

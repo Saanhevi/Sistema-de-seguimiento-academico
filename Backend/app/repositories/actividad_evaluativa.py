@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from app.models.actividad_evaluativa import ActividadEvaluativa
+from app.models.seccion_porcentaje import SeccionPorcentaje
 
 
 class ActividadEvaluativaRepository:
@@ -13,11 +14,17 @@ class ActividadEvaluativaRepository:
         self.session.refresh(actividad)
         return actividad
 
-    def listar(self, id_seccion=None):
+    def listar(self, id_seccion=None, ids_curso=None):
         query = select(ActividadEvaluativa)
 
         if id_seccion is not None:
             query = query.where(ActividadEvaluativa.id_seccion == id_seccion)
+        # ids_curso acota el listado a los cursos que el usuario puede leer.
+        if ids_curso is not None:
+            query = query.join(
+                SeccionPorcentaje,
+                SeccionPorcentaje.id_seccion == ActividadEvaluativa.id_seccion,
+            ).where(SeccionPorcentaje.id_curso.in_(ids_curso))
 
         return self.session.execute(query).scalars().all()
 
