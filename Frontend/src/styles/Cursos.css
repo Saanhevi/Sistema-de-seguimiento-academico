@@ -316,6 +316,34 @@
   margin-top: 4px;
 }
 
+.docente-matricula-form {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.docente-matricula-form h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.docente-matricula-form p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.docente-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .docente-pill {
   padding: 7px 10px;
   border-radius: 999px;
@@ -443,6 +471,12 @@
 
   .docente-estudiantes-hero {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .docente-inline-fields {
+    grid-template-columns: 1fr;
   }
 }
 

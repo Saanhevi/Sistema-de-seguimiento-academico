@@ -110,7 +110,7 @@ def obtener_curso(
 def crear_matricula(
     payload: MatriculaCreate,
     service: CursoService = Depends(get_curso_service),
-    usuario=Depends(require_role("Administrador")),
+    usuario=Depends(require_role("Administrador", "Docente")),
 ):
     return service.crear_matricula(payload.id_estudiante, payload.id_grado, payload.anio, usuario_actual=usuario)
 
