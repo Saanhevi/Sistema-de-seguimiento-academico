@@ -35,7 +35,7 @@ function CursoAcordeon({ curso }) {
         if (!vigente) return;
         const mapa = {};
         respuestas.flat().forEach((nota) => {
-          mapa[nota.id_actividad] = nota.calificacion;
+          mapa[nota.id_actividad] = nota;
         });
         setNotaPorActividad(mapa);
         setError("");
