@@ -73,9 +73,13 @@ Mismo comando en Windows (PowerShell/CMD), macOS o Linux. Esto crea (si aún no 
 
 ## 4. Migraciones de base de datos
 
-> ⚠️ **Si ya tenías el proyecto levantado antes, este paso es obligatorio después de cada `git pull` que traiga una migración nueva.** `Database/schemas.sql` **solo se ejecuta la primera vez que se crea el volumen de Postgres**: sobre un volumen que ya existe, `docker compose up` no aplica ningún cambio de esquema. Saltarse este paso hace que la API falle con `UndefinedColumn` en cualquier consulta que toque la tabla afectada — normalmente **el login**.
+**¿Acabas de clonar el proyecto, o corriste `docker compose down -v`? No tienes que hacer nada.** `Database/schemas.sql` está siempre al día y se aplica solo al crear el volumen, así que la base nace con el esquema completo. Sáltate esta sección.
 
-Las migraciones son scripts `.sql` numerados en `Database/migraciones/`. Aplícalas en orden:
+Las migraciones existen únicamente para el otro caso:
+
+> ⚠️ **Si ya tenías el proyecto levantado y haces `git pull`,** un `docker compose up` **no** aplica los cambios de esquema: `schemas.sql` solo se ejecuta la primera vez que se crea el volumen. Hay que aplicar a mano las migraciones nuevas, o la API falla con `UndefinedColumn` en cualquier consulta que toque la tabla afectada — normalmente **el login**.
+
+Son scripts `.sql` numerados en `Database/migraciones/`, y se aplican en orden:
 
 ```bash
 docker compose exec -T db psql -U postgres -d gestion_academica < Database/migraciones/001-usuario-documento.sql
@@ -87,7 +91,7 @@ En **Windows (PowerShell)**, `<` no redirige archivos; usa:
 Get-Content Database/migraciones/001-usuario-documento.sql | docker compose exec -T db psql -U postgres -d gestion_academica
 ```
 
-Todas las migraciones son **idempotentes** (`IF NOT EXISTS`): correrlas dos veces no falla ni borra datos, así que ante la duda, vuelve a correrlas.
+Todas son **idempotentes** (`IF NOT EXISTS`): correrlas dos veces no falla ni borra datos, así que ante la duda, vuelve a correrlas.
 
 | Migración | Qué hace | Historia |
 |---|---|---|
@@ -99,7 +103,7 @@ Para comprobar que se aplicó:
 docker compose exec db psql -U postgres -d gestion_academica -c "\d usuario"
 ```
 
-> **Instalaciones nuevas no necesitan nada de esto:** los cambios están también en `Database/schemas.sql`, así que un proyecto recién clonado (o un `docker compose down -v && docker compose up -d`) nace con el esquema al día. Como el proyecto está en desarrollo y nadie depende de los datos, borrar el volumen es una alternativa válida a correr las migraciones.
+> Mientras el proyecto esté en desarrollo y nadie dependa de los datos, `docker compose down -v && docker compose up -d` (y volver a correr el seed) es una alternativa perfectamente válida a aplicar las migraciones: recrea el volumen desde `schemas.sql`, ya con todos los cambios.
 
 ## Comandos útiles
 
@@ -149,7 +153,9 @@ psql -U postgres -d gestion_academica -f Database/schemas.sql
 
 ### Migraciones
 
-`schemas.sql` deja la base al día, así que **si acabas de crearla no tienes que hacer nada más**. Si en cambio ya tenías la base creada de antes y haces `git pull`, aplica en orden los scripts de `Database/migraciones/` (son idempotentes, correrlos dos veces no falla):
+Los dos comandos de arriba dejan la base con el esquema completo: **si acabas de crearla, no hay nada más que hacer.**
+
+Solo si ya tenías la base creada de antes y haces `git pull`, aplica en orden los scripts de `Database/migraciones/` (son idempotentes, correrlos dos veces no falla):
 
 ```bash
 psql -U postgres -d gestion_academica -f Database/migraciones/001-usuario-documento.sql
