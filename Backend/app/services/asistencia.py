@@ -104,22 +104,35 @@ class AsistenciaService:
                 h.id_estudiante : h.estado
                 for h in historial
             }
+            historial_faltante = False
             
             for matricula in matriculas:
                 estudiante = matricula.estudiante
                 id_estudiante = estudiante.id_estudiante
                 nombres = estudiante.usuario.nombres 
                 apellidos = estudiante.usuario.apellidos
+                estado = estados.get(id_estudiante, "Presente")
+
+                if id_estudiante not in estados:
+                    historial_asistencia = HistorialAsistencia(
+                        id_dia=id_dia,
+                        id_estudiante=id_estudiante,
+                        estado=estado
+                    )
+                    self.session.add(historial_asistencia)
+                    estados[id_estudiante] = estado
+                    historial_faltante = True
                 
                 asistencia = {
                     "id_estudiante" :id_estudiante,
                     "nombres": nombres,
                     "apellidos": apellidos,
-                    "estado": estados[id_estudiante]
+                    "estado": estado
                 }
                 
                 asistencias.append(asistencia)
-                
+            if historial_faltante:
+                self.session.commit()
             return {
                     "id_dia": id_dia,
                     "grado": grado.nombre,
