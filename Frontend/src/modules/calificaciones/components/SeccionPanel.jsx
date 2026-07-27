@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { crearSeccion, listarSecciones } from "../services/calificacionService";
+import { crearSeccion, listarSecciones, eliminarActividad, eliminarSeccion } from "../services/calificacionService";
 import { claseBadge, formatearNota } from "../utils/notas";
 import ActividadModal from "./ActividadModal";
 
@@ -30,6 +30,7 @@ export default function SeccionPanel({
   const [guardando, setGuardando] = useState(false);
   const [errorForm, setErrorForm] = useState("");
   const [modalActividad, setModalActividad] = useState(null);
+  const [comentarioModal, setComentarioModal] = useState(null);
 
   const puedeEditar = !readOnly && periodoAbierto;
 
@@ -89,6 +90,35 @@ export default function SeccionPanel({
     }
   };
 
+  const handleEliminarSeccion = async (seccion) => {
+    if (!window.confirm(`¿Eliminar la sección "${seccion.nombre_seccion}" y todas sus actividades?`)) {
+      return;
+    }
+    setError("");
+    try {
+      await eliminarSeccion(seccion.id_seccion);
+      await cargarSecciones();
+      if (seccionActiva?.id_seccion === seccion.id_seccion) {
+        onSeleccionarSeccion(null);
+      }
+    } catch (err) {
+      setError(err.detail || "No se pudo eliminar la sección");
+    }
+  };
+
+  const handleEliminarActividad = async (actividad) => {
+    if (!window.confirm(`¿Eliminar la actividad "${actividad.nombre}"?`)) {
+      return;
+    }
+    setError("");
+    try {
+      await eliminarActividad(actividad.id_actividad);
+      onActividadCreada?.();
+    } catch (err) {
+      setError(err.detail || "No se pudo eliminar la actividad");
+    }
+  };
+
   const alternarSeccion = (seccion) => {
     const misma = seccionActiva?.id_seccion === seccion.id_seccion;
     onSeleccionarSeccion(misma ? null : seccion);
@@ -101,13 +131,24 @@ export default function SeccionPanel({
       <div className="cal-card-head">
         <h3 className="cal-section-title">Secciones de porcentaje</h3>
         {puedeEditar && (
-          <button
-            type="button"
-            className="cal-btn secondary small"
-            onClick={() => setMostrarFormulario((valor) => !valor)}
-          >
-            {mostrarFormulario ? "Cancelar" : "Nueva sección"}
-          </button>
+          <div className="cal-card-head-actions">
+            <button
+              type="button"
+              className="cal-btn secondary small"
+              onClick={() => setMostrarFormulario((valor) => !valor)}
+            >
+              {mostrarFormulario ? "Cancelar" : "Nueva sección"}
+            </button>
+            {seccionActiva && (
+              <button
+                type="button"
+                className="cal-btn danger small"
+                onClick={() => handleEliminarSeccion(seccionActiva)}
+              >
+                Eliminar sección
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -190,28 +231,63 @@ export default function SeccionPanel({
                     <p className="cal-hint">Esta sección aún no tiene actividades.</p>
                   ) : (
                     <ul className="cal-actividad-list">
-                      {actividades.map((actividad) => (
-                        <li className="cal-actividad-item" key={actividad.id_actividad}>
-                          <span>{actividad.nombre}</span>
-                          <span className="cal-actividad-fecha">{actividad.fecha}</span>
-                          {notaPorActividad && (
-                            <span className={`cal-badge ${claseBadge(notaPorActividad[actividad.id_actividad])}`}>
-                              {formatearNota(notaPorActividad[actividad.id_actividad])}
-                            </span>
-                          )}
-                        </li>
-                      ))}
+                      {actividades.map((actividad) => {
+                        const nota = notaPorActividad?.[actividad.id_actividad];
+                        return (
+                          <li className="cal-actividad-item" key={actividad.id_actividad}>
+                            <div className="cal-actividad-item-main">
+                              <span>{actividad.nombre}</span>
+                              <span className="cal-actividad-fecha">{actividad.fecha}</span>
+                            </div>
+                            {nota && (
+                              <>
+                                <span className={`cal-badge ${claseBadge(nota.calificacion)}`}>
+                                  {formatearNota(nota.calificacion)}
+                                </span>
+                                {nota.comentario && (
+                                  <p
+                                    className={`cal-actividad-comment${readOnly ? " read-only" : ""}`}
+                                    onClick={readOnly ? () => setComentarioModal(nota.comentario) : undefined}
+                                    role={readOnly ? "button" : undefined}
+                                    tabIndex={readOnly ? 0 : undefined}
+                                    onKeyDown={readOnly ? (e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        setComentarioModal(nota.comentario);
+                                      }
+                                    } : undefined}
+                                  >
+                                    {nota.comentario}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                            {puedeEditar && (
+                              <button
+                                type="button"
+                                className="cal-btn danger icon"
+                                aria-label={`Eliminar actividad ${actividad.nombre}`}
+                                onClick={() => handleEliminarActividad(actividad)}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
                   {puedeEditar && (
-                    <button
-                      type="button"
-                      className="cal-btn secondary small"
-                      onClick={() => setModalActividad(seccion)}
-                    >
-                      Nueva actividad
-                    </button>
+                    <div className="cal-seccion-actions">
+                      <button
+                        type="button"
+                        className="cal-btn secondary small"
+                        onClick={() => setModalActividad(seccion)}
+                      >
+                        Nueva actividad
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -226,6 +302,20 @@ export default function SeccionPanel({
           onCerrar={() => setModalActividad(null)}
           onCreada={onActividadCreada}
         />
+      )}
+
+      {comentarioModal && (
+        <div className="cal-popup-overlay" onClick={() => setComentarioModal(null)}>
+          <div className="cal-popup-card" onClick={(event) => event.stopPropagation()}>
+            <div className="cal-popup-header">
+              <strong>Comentario completo</strong>
+              <button type="button" className="cal-btn icon" onClick={() => setComentarioModal(null)}>
+                ×
+              </button>
+            </div>
+            <p>{comentarioModal}</p>
+          </div>
+        </div>
       )}
     </>
   );
