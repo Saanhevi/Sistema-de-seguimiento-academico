@@ -1,5 +1,6 @@
-﻿from datetime import date
+from datetime import date
 
+from fastapi import HTTPException
 from app.core.database import SessionLocal
 from app.core.security import controlador_contrasena
 from app.models.usuario import Usuario
@@ -62,6 +63,18 @@ COURSES = [
             ("estudiante4a_notas@colegio.edu.co", "Tomás", "Navarro"),
             ("estudiante4b_notas@colegio.edu.co", "Isabella", "Ruiz"),
             ("estudiante4c_notas@colegio.edu.co", "Hugo", "Cortés"),
+        ],
+    },
+    {
+        "docente_correo": "docente2_notas@colegio.edu.co",
+        "grado": "8A-Notas",
+        "materia": "Arte-Notas",
+        "periodo": {"nombre": "2026-5-Notas", "anio": 2026},
+        "estudiantes": [
+            ("estudiante5a_notas@colegio.edu.co", "Daniel", "Pérez"),
+            ("estudiante5b_notas@colegio.edu.co", "Sara", "Mendoza"),
+            ("estudiante5c_notas@colegio.edu.co", "Andrés", "Gómez"),
+            ("estudiante5d_notas@colegio.edu.co", "Julia", "Castillo"),
         ],
     },
 ]
@@ -176,18 +189,6 @@ with SessionLocal() as session:
             curso = curso_service.crear_curso(docente_usuario.id_usuario, grado.id_grado, materia.id_materia, periodo.id_periodo)
 
         estudiantes_info = []
-        for correo, nombres, apellidos in curso_def["estudiantes"]:
-            _, estudiante = obtener_o_crear_estudiante(session, correo, nombres, apellidos)
-            session.commit()
-            if not obtener_o_crear_matricula(session, estudiante.id_estudiante, grado.id_grado, periodo.anio):
-                try:
-                    curso_service.crear_matricula(estudiante.id_estudiante, grado.id_grado, periodo.anio)
-                except Exception:
-                    session.rollback()
-            estudiantes_info.append(estudiante)
-
-        session.commit()
-
         curso_info = {
             "curso": curso,
             "grado": grado,
@@ -196,6 +197,21 @@ with SessionLocal() as session:
             "estudiantes": estudiantes_info,
             "secciones": [],
         }
+
+        for correo, nombres, apellidos in curso_def["estudiantes"]:
+            _, estudiante = obtener_o_crear_estudiante(session, correo, nombres, apellidos)
+            session.commit()
+            if not obtener_o_crear_matricula(session, estudiante.id_estudiante, grado.id_grado, periodo.anio):
+                try:
+                    curso_service.crear_matricula(estudiante.id_estudiante, grado.id_grado, periodo.anio)
+                except HTTPException as err:
+                    session.rollback()
+                    if err.status_code == 409:
+                        if not obtener_o_crear_matricula(session, estudiante.id_estudiante, grado.id_grado, periodo.anio):
+                            raise
+                    else:
+                        raise
+            estudiantes_info.append(estudiante)
 
         for seccion_index, (nombre_seccion, porcentaje, actividades) in enumerate(SECCIONES):
             seccion = session.query(SeccionPorcentaje).filter(
@@ -215,20 +231,20 @@ with SessionLocal() as session:
                     actividad = calificacion_service.crear_actividad(nombre_actividad, date(periodo.anio, 7, 20), seccion.id_seccion, docente_usuario)
 
                 notas_iniciales = []
+                comentarios = [
+                    f"Excelente trabajo en {nombre_actividad}",
+                    f"Buen desempeño en {nombre_actividad}",
+                    f"Necesita mejorar en {nombre_actividad}",
+                ]
                 for index, estudiante in enumerate(estudiantes_info):
                     calificacion = round(5.0 - 0.3 * index - 0.2 * actividad_index - 0.1 * seccion_index, 2)
                     if calificacion < 0:
                         calificacion = 0.0
-                    comentarios = [
-                        f"Excelente trabajo en {nombre_actividad}",
-                        f"Buen desempeño en {nombre_actividad}",
-                        f"Necesita mejorar en {nombre_actividad}",
-                    ]
                     notas_iniciales.append(
                         {
                             "id_estudiante": estudiante.id_estudiante,
                             "calificacion": calificacion,
-                            "comentario": comentarios[index],
+                            "comentario": comentarios[index % len(comentarios)],
                         }
                     )
 

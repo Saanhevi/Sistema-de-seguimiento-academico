@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { crearSeccion, listarSecciones, eliminarActividad, eliminarSeccion } from "../services/calificacionService";
 import { claseBadge, formatearNota } from "../utils/notas";
 import ActividadModal from "./ActividadModal";
@@ -31,6 +31,7 @@ export default function SeccionPanel({
   const [errorForm, setErrorForm] = useState("");
   const [modalActividad, setModalActividad] = useState(null);
   const [comentarioModal, setComentarioModal] = useState(null);
+  const closeComentarioButtonRef = useRef(null);
 
   const puedeEditar = !readOnly && periodoAbierto;
 
@@ -69,6 +70,23 @@ export default function SeccionPanel({
       vigente = false;
     };
   }, [idCurso]);
+
+  useEffect(() => {
+    if (!comentarioModal) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setComentarioModal(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    closeComentarioButtonRef.current?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [comentarioModal]);
 
   const handleCrearSeccion = async (e) => {
     e.preventDefault();
@@ -234,17 +252,14 @@ export default function SeccionPanel({
                       {actividades.map((actividad) => {
                         const nota = notaPorActividad?.[actividad.id_actividad];
                         return (
-                          <li className="cal-actividad-item" key={actividad.id_actividad}>
+                          <li className={`cal-actividad-item${readOnly ? "" : " docente"}`} key={actividad.id_actividad}>
                             <div className="cal-actividad-item-main">
                               <span>{actividad.nombre}</span>
                               <span className="cal-actividad-fecha">{actividad.fecha}</span>
                             </div>
-                            {nota && (
-                              <>
-                                <span className={`cal-badge ${claseBadge(nota.calificacion)}`}>
-                                  {formatearNota(nota.calificacion)}
-                                </span>
-                                {nota.comentario && (
+                            {readOnly ? (
+                              <div className="cal-actividad-comment-cell">
+                                {nota?.comentario ? (
                                   <p
                                     className={`cal-actividad-comment${readOnly ? " read-only" : ""}`}
                                     onClick={readOnly ? () => setComentarioModal(nota.comentario) : undefined}
@@ -259,8 +274,32 @@ export default function SeccionPanel({
                                   >
                                     {nota.comentario}
                                   </p>
+                                ) : (
+                                  <div className="cal-actividad-comment-spacer" />
                                 )}
-                              </>
+                              </div>
+                            ) : nota && nota.comentario ? (
+                              <p
+                                className={`cal-actividad-comment${readOnly ? " read-only" : ""}`}
+                                onClick={readOnly ? () => setComentarioModal(nota.comentario) : undefined}
+                                role={readOnly ? "button" : undefined}
+                                tabIndex={readOnly ? 0 : undefined}
+                                onKeyDown={readOnly ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setComentarioModal(nota.comentario);
+                                  }
+                                } : undefined}
+                              >
+                                {nota.comentario}
+                              </p>
+                            ) : (
+                              <div className="cal-actividad-comment-spacer" />
+                            )}
+                            {readOnly && (
+                              <span className={`cal-badge ${claseBadge(nota?.calificacion)} `}>
+                                {formatearNota(nota?.calificacion)}
+                              </span>
                             )}
                             {puedeEditar && (
                               <button
@@ -305,11 +344,23 @@ export default function SeccionPanel({
       )}
 
       {comentarioModal && (
-        <div className="cal-popup-overlay" onClick={() => setComentarioModal(null)}>
-          <div className="cal-popup-card" onClick={(event) => event.stopPropagation()}>
-            <div className="cal-popup-header">
-              <strong>Comentario completo</strong>
-              <button type="button" className="cal-btn icon" onClick={() => setComentarioModal(null)}>
+        <div className="cal-modal-overlay" onClick={() => setComentarioModal(null)}>
+          <div
+            className="cal-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cal-comment-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="cal-modal-header">
+              <span className="cal-modal-title" id="cal-comment-dialog-title">Comentario completo</span>
+              <button
+                ref={closeComentarioButtonRef}
+                type="button"
+                className="cal-modal-close"
+                onClick={() => setComentarioModal(null)}
+                aria-label="Cerrar comentario"
+              >
                 ×
               </button>
             </div>
