@@ -69,16 +69,27 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="El correo ya existe"
                 )
-            
-            # Se crea la contrasena hasheada 
+
+            # HU22: Usuario.documento es UNIQUE. Sin esta comprobación previa, un
+            # documento repetido sale como un 500 por violación de constraint en
+            # vez de un error que el formulario pueda mostrar.
+            # El valor llega ya normalizado desde el schema (RN-r).
+            if self.repositorio.buscar_por_documento(credentials.documento):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Ya existe una cuenta con ese número de documento"
+                )
+
+            # Se crea la contrasena hasheada
             password_hash = controlador_contrasena.hashear(credentials.password)
-            
-            usuario = Usuario(            
+
+            usuario = Usuario(
                 nombres = credentials.nombres,
                 apellidos = credentials.apellidos,
                 correo = credentials.correo,
+                documento = credentials.documento,
                 password_hash = password_hash,
-                rol = "Estudiante" 
+                rol = "Estudiante"
         )
             self.repositorio.crear(usuario)
 
@@ -151,6 +162,7 @@ class AuthService:
             "nombres": usuario.nombres,
             "apellidos": usuario.apellidos,
             "correo": usuario.correo,
+            "documento": usuario.documento,
             "grado_actual": matricula_actual.grado.nombre if matricula_actual and matricula_actual.grado else None,
             "anio_matricula": matricula_actual.anio if matricula_actual else None,
         }

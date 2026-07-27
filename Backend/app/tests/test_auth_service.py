@@ -102,8 +102,12 @@ class CrearCuentaEstudiantilTests(unittest.TestCase):
             nombres="Ana",
             apellidos="Perez",
             correo="ana.perez@colegio.edu.co",
+            documento="1023456789",
             password="Estudiante123!",
         )
+        # HU22: por defecto el documento está libre; los tests que prueban el
+        # choque lo sobreescriben.
+        self.repositorio.buscar_por_documento.return_value = None
 
     def _simular_insercion(self, id_usuario=31):
         def crear(usuario):
@@ -137,6 +141,52 @@ class CrearCuentaEstudiantilTests(unittest.TestCase):
         self.assertEqual(exc.exception.status_code, 401)
         self.repositorio.crear.assert_not_called()
         self.service.repositorio_estudiante.crear_estudiante.assert_not_called()
+
+    # --- HU22: documento ---
+
+    def test_guarda_el_documento_en_el_usuario(self):
+        self.repositorio.buscar_por_correo.return_value = None
+        self._simular_insercion()
+
+        with patch("app.services.auth.controlador_contrasena.hashear", return_value="hash"):
+            self.service.crear_cuenta_estudiantil(self.credenciales)
+
+        usuario = self.repositorio.crear.call_args.args[0]
+        self.assertEqual(usuario.documento, "1023456789")
+
+    def test_documento_se_guarda_normalizado(self):
+        """RN-r: se guarda con la misma forma con la que llegará desde un Excel."""
+        credenciales = CrearCuentaEstudiantilRequest(
+            nombres="Ana",
+            apellidos="Perez",
+            correo="otra.ana@colegio.edu.co",
+            documento="1.023.456.789",
+            password="Estudiante123!",
+        )
+        self.assertEqual(credenciales.documento, "1023456789")
+
+    def test_documento_repetido_devuelve_409(self):
+        self.repositorio.buscar_por_correo.return_value = None
+        self.repositorio.buscar_por_documento.return_value = Usuario(id_usuario=1, rol="Estudiante")
+
+        with self.assertRaises(HTTPException) as exc:
+            self.service.crear_cuenta_estudiantil(self.credenciales)
+
+        # 409 y no un 500 por violación del UNIQUE de Usuario.documento
+        self.assertEqual(exc.exception.status_code, 409)
+        self.repositorio.crear.assert_not_called()
+        self.service.repositorio_estudiante.crear_estudiante.assert_not_called()
+
+    def test_documento_vacio_o_corto_es_rechazado_por_el_schema(self):
+        for invalido in ("", "123", "1.2.3", "no-son-veinte-caracteres-validos"):
+            with self.assertRaises(ValidationError):
+                CrearCuentaEstudiantilRequest(
+                    nombres="Ana",
+                    apellidos="Perez",
+                    correo="ana.perez@colegio.edu.co",
+                    documento=invalido,
+                    password="Estudiante123!",
+                )
 
 
 if __name__ == "__main__":

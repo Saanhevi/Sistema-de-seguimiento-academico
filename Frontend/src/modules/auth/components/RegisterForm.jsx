@@ -7,6 +7,9 @@ export default function RegisterForm() {
     const [nombres, setNombres] = useState("");
     const [apellidos, setApellidos] = useState("");
     const [correo, setCorreo] = useState("");
+    // HU22: el documento es la clave con la que un docente empareja su propia
+    // planilla de Excel con los estudiantes del sistema.
+    const [documento, setDocumento] = useState("");
     const [password, setPassword] = useState("");
 
     const  navigate = useNavigate()
@@ -23,6 +26,7 @@ export default function RegisterForm() {
                 nombres,
                 apellidos,
                 correo,
+                documento,
                 password
 
             });
@@ -32,12 +36,19 @@ export default function RegisterForm() {
             setNombres("");
             setApellidos("");
             setCorreo("");
+            setDocumento("");
             setPassword("");
 
             navigate("/login")
         } catch (error) {
 
-            alert(error.detail);
+            // Un 422 de Pydantic manda `detail` como lista de errores, no como
+            // texto: sin este aplanado el alert muestra "[object Object]".
+            const detalle = Array.isArray(error.detail)
+                ? error.detail.map((item) => item.msg).join(" · ")
+                : error.detail;
+
+            alert(detalle || "No se pudo crear la cuenta");
 
         }
 
@@ -87,6 +98,22 @@ export default function RegisterForm() {
                     value={correo}
                     onChange={(e) => setCorreo(e.target.value)}
                     placeholder="correo@colegio.com"
+                    required
+                />
+
+            </label>
+
+            <label>
+
+                Número de documento
+
+                <input
+                    type="text"
+                    value={documento}
+                    onChange={(e) => setDocumento(e.target.value)}
+                    placeholder="1023456789"
+                    minLength={5}
+                    maxLength={20}
                     required
                 />
 
