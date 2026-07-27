@@ -56,28 +56,4 @@ class NotaRepository:
             return 0.0
 
         calificaciones = [float(n.calificacion) for n in notas if n.calificacion is not None]
-        return round(sum(calificaciones) / len(calificaciones), 2) 
-
-    def obtener_promedio_grupal_materia(self, id_materia: int, id_docente: int) -> float:
-        from app.models.actividad_evaluativa import ActividadEvaluativa
-        from app.models.seccion_porcentaje import SeccionPorcentaje
-        from app.models.curso import Curso
-
-        # Buscamos todas las notas de esa materia, pero SOLO de los cursos que dicta este profesor
-        notas = (
-            self.session.query(Nota)
-            .join(ActividadEvaluativa, Nota.id_actividad == ActividadEvaluativa.id_actividad)
-            .join(SeccionPorcentaje, ActividadEvaluativa.id_seccion == SeccionPorcentaje.id_seccion)
-            .join(Curso, SeccionPorcentaje.id_curso == Curso.id_curso)
-            .filter(
-                Curso.id_materia == id_materia,
-                Curso.id_docente == id_docente
-            )
-            .all()
-        )
-
-        if not notas:
-            return 0.0
-
-        calificaciones = [float(n.calificacion) for n in notas if n.calificacion is not None]
-        return round(sum(calificaciones) / len(calificaciones), 2) if calificaciones else 0.0
+        return round(sum(calificaciones) / len(calificaciones), 2) if calificaciones else 0.0   
