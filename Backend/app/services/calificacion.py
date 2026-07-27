@@ -206,18 +206,13 @@ class CalificacionService:
             id_docente=id_docente_filtro,
         )
    
-    def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int) -> float:
-        return self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia)
-    def obtener_promedio_grupal_materia(self, id_materia: int, usuario: Usuario) -> float:
-        # Validamos que el usuario sea un Docente
-        if usuario.rol not in ["Docente", "Administrador"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail="Solo los docentes pueden ver el promedio grupal de la materia"
-            )
-        
-        # Llamamos al repositorio pasándole el ID de la materia y el ID del profesor
-        return self.nota_repo.obtener_promedio_grupal_materia(id_materia, usuario.id_usuario)
+    def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int, id_periodo: int) -> float | None:
+        return self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia, id_periodo)
+
+    def obtener_promedio_grupal_materia(self, id_materia: int, usuario: Usuario, id_periodo: int) -> float | None:
+        id_docente_filtro = usuario.id_usuario if usuario.rol == "Docente" else None
+        return self.nota_repo.obtener_promedio_grupal_materia(id_materia, id_docente_filtro, id_periodo)
+    
 
     # --- Eliminaciones (HU16) ---
     def eliminar_actividad(self, id_actividad: int, usuario: Usuario) -> None:

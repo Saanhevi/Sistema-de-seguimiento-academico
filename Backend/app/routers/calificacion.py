@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
+
 from app.core.dependencies import get_calificacion_service, require_role
 from app.schemas.calificacion import (
     ID_MAXIMO,
@@ -107,28 +108,42 @@ def listar_notas(
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
     return service.listar_notas(id_actividad=id_actividad, usuario=usuario)
-@router.get( "/notas/promedio", dependencies=[Depends(require_role("Administrador", "Docente", "Estudiante"))]
-)
+@router.get("/notas/promedio")
 def obtener_promedio_estudiante_materia(
     id_estudiante: int = Query(..., gt=0, le=ID_MAXIMO),
     id_materia: int = Query(..., gt=0, le=ID_MAXIMO),
+    id_periodo: int = Query(..., gt=0, le=ID_MAXIMO), 
     service: CalificacionService = Depends(get_calificacion_service),
+    usuario = Depends(require_role("Administrador", "Docente", "Estudiante"))
 ):
-    #Retorna el promedio de notas de un estudiante en una materia específica.
+   
+    if usuario.rol == "Estudiante" and usuario.id_usuario != id_estudiante:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="No tienes permiso para consultar el promedio de otro estudiante."
+        )
+
+   
+    promedio = service.obtener_promedio_estudiante_materia(id_estudiante, id_materia, id_periodo)
     
-    promedio = service.obtener_promedio_estudiante_materia(id_estudiante, id_materia)
     return {
         "id_estudiante": id_estudiante,
         "id_materia": id_materia,
+        "id_periodo": id_periodo, 
         "promedio": promedio
     }
 @router.get("/materia/{id_materia}/promedio-grupal", summary="Obtener promedio grupal de una materia")
 def obtener_promedio_grupal_materia(
     id_materia: int,
+    id_periodo: int = Query(..., gt=0, le=ID_MAXIMO), 
     service: CalificacionService = Depends(get_calificacion_service),
-    usuario=Depends(require_role("Administrador", "Docente")),
-    ):
-    #Calcula el promedio general de todos los estudiantes en una materia específica,basado en los cursos que dicta el docente autenticado.
+    usuario = Depends(require_role("Administrador", "Docente")),
+):
    
-    promedio = service.obtener_promedio_grupal_materia(id_materia, usuario)
-    return {"id_materia": id_materia, "promedio_grupal": promedio}
+    promedio = service.obtener_promedio_grupal_materia(id_materia, usuario, id_periodo)
+    
+    return {
+        "id_materia": id_materia, 
+        "id_periodo": id_periodo,
+        "promedio_grupal": promedio
+    }
