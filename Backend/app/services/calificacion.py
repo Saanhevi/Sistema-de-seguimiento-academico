@@ -1,13 +1,21 @@
 import math
+import re
+import unicodedata
 from datetime import date
+from io import BytesIO
 
 from fastapi import HTTPException, status
-from sqlalchemy import text
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from app.core.identidad import normalizar_correo, normalizar_documento
 from app.models.actividad_evaluativa import ActividadEvaluativa
 from app.models.curso import Curso
 from app.models.estudiante import Estudiante
+from app.models.matricula import Matricula
 from app.models.nota import Nota
 from app.models.seccion_porcentaje import SeccionPorcentaje
 from app.models.usuario import Usuario
@@ -15,6 +23,42 @@ from app.repositories.actividad_evaluativa import ActividadEvaluativaRepository
 from app.repositories.curso import CursoRepository
 from app.repositories.nota import NotaRepository
 from app.repositories.seccion_porcentaje import SeccionPorcentajeRepository
+from app.services.importacion_excel import ArchivoInvalido, ErrorFila, parsear_notas_xlsx
+
+# --- HU22: plantilla descargable ---
+
+# §7.2: nombre, apellido y correo. SIN documento: un .xlsx descargado sale del
+# sistema y circula por correo o WhatsApp, fuera de todo control de acceso, y
+# RNF-05 obliga a cuidar los datos personales de menores. El correo institucional
+# es dato de contacto que el docente ya maneja, y basta para emparejar de vuelta.
+COLUMNAS_PLANTILLA = ("nombre", "apellido", "correo", "calificacion", "comentario")
+ANCHOS_PLANTILLA = (18, 18, 34, 14, 30)
+
+# Excel no admite estos caracteres en el nombre de una hoja, y openpyxl no
+# siempre avisa: el archivo sale corrupto y no abre.
+_CARACTERES_PROHIBIDOS_HOJA = re.compile(r"[\[\]:*?/\\]")
+LARGO_MAXIMO_HOJA = 31
+
+MEDIA_TYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _sanear_nombre_hoja(nombre: str) -> str:
+    """Nombre de hoja que Excel acepta: sin caracteres prohibidos y de 31 como máximo."""
+    limpio = _CARACTERES_PROHIBIDOS_HOJA.sub(" ", (nombre or "").strip())
+    limpio = " ".join(limpio.split())[:LARGO_MAXIMO_HOJA]
+    return limpio or "Notas"
+
+
+def _sanear_trozo_archivo(texto: str) -> str:
+    """Trozo de nombre de archivo sin tildes, espacios ni separadores de ruta.
+
+    Un Content-Disposition con caracteres no ASCII se rompe en algunos
+    navegadores, así que el nombre se reduce a [A-Za-z0-9_-].
+    """
+    normalizado = unicodedata.normalize("NFKD", str(texto or "").strip())
+    sin_tildes = "".join(c for c in normalizado if not unicodedata.combining(c))
+    saneado = re.sub(r"[^A-Za-z0-9]+", "-", sin_tildes).strip("-")
+    return saneado or "sin-nombre"
 
 
 class CalificacionService:
@@ -218,6 +262,281 @@ class CalificacionService:
         
         # Llamamos al repositorio pasándole el ID de la materia y el ID del profesor
         return self.nota_repo.obtener_promedio_grupal_materia(id_materia, usuario.id_usuario)
+
+    # --- Importación desde Excel (HU22) ---
+
+    def _obtener_actividad_editable(self, id_actividad: int, usuario: Usuario) -> ActividadEvaluativa:
+        """Actividad sobre la que el usuario puede escribir notas ahora mismo.
+
+        Es el mismo trío de comprobaciones que hace cargar_notas_masivo, en el
+        mismo orden y con los mismos códigos: 404 -> 403 -> 400.
+        """
+        actividad = self.actividad_repo.buscar_por_id(id_actividad)
+        if not actividad:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
+
+        self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
+        self._validar_periodo_abierto(actividad)
+        return actividad
+
+    def _estudiantes_del_curso(self, curso: Curso) -> list[dict]:
+        """RN-k: los matriculados en el grado y año del curso.
+
+        Es exactamente el mismo alcance que ve TablaNotas, así que no se pueden
+        importar notas de alguien que no aparece en la tabla. También es la
+        frontera de privacidad de todo este flujo: nada de lo que se devuelve al
+        docente sale de este conjunto.
+        """
+        anio = curso.periodo.anio if curso.periodo is not None else date.today().year
+
+        query = (
+            select(
+                Matricula.id_estudiante,
+                Usuario.nombres,
+                Usuario.apellidos,
+                Usuario.correo,
+                Usuario.documento,
+            )
+            .join(Estudiante, Estudiante.id_estudiante == Matricula.id_estudiante)
+            .join(Usuario, Usuario.id_usuario == Estudiante.id_estudiante)
+            .where(Matricula.id_grado == curso.id_grado, Matricula.anio == anio)
+        )
+
+        return [
+            {
+                "id_estudiante": fila.id_estudiante,
+                "nombre": fila.nombres,
+                "apellido": fila.apellidos,
+                "correo": fila.correo,
+                "documento": fila.documento,
+            }
+            for fila in self.session.execute(query).all()
+        ]
+
+    def _indices_de_identidad(self, estudiantes: list[dict]) -> dict[str, dict]:
+        """Un índice por cada clave de RN-j, todos acotados al curso.
+
+        RN-r se aplica también del lado de la base de datos: el documento que se
+        guarda desde el registro ya viene normalizado, pero una fila cargada a
+        mano puede traer puntos, y comparar "1.023.456.789" con "1023456789"
+        falla en silencio.
+        """
+        indices = {"id_estudiante": {}, "documento": {}, "correo": {}}
+
+        for estudiante in estudiantes:
+            indices["id_estudiante"][estudiante["id_estudiante"]] = estudiante
+
+            documento = normalizar_documento(estudiante.get("documento"))
+            if documento:
+                indices["documento"][documento] = estudiante
+
+            correo = normalizar_correo(estudiante.get("correo"))  # RN-t
+            if correo:
+                indices["correo"][correo] = estudiante
+
+        return indices
+
+    def _mensaje_sin_emparejar(self, clave: str, valor, anio: int) -> str:
+        """Mensaje de una fila cuya identidad no está en el curso.
+
+        A propósito, ninguno confirma si la persona existe fuera del curso: un
+        documento de otro grado devuelve lo mismo que uno inexistente. Si no,
+        el importador se convierte en un oráculo para enumerar el directorio del
+        colegio (§11), que es el problema del hallazgo H3.
+        """
+        if clave == "documento":
+            return (
+                f"Ningún estudiante de este curso tiene el documento {valor}. "
+                "Si el estudiante ya está registrado pero su ficha no tiene documento, "
+                "usa el correo en esa fila o pídele al administrador que la complete."
+            )
+        if clave == "correo":
+            return (
+                f"Ningún estudiante de este curso tiene el correo {valor}. "
+                "Revisa el correo, o pídele al administrador que cree la cuenta."
+            )
+        return (
+            f"No hay ningún estudiante con id {valor} matriculado en el grado de "
+            f"este curso para el año {anio}."
+        )
+
+    def previsualizar_importacion_notas(self, id_actividad: int, contenido: bytes, usuario: Usuario) -> dict:
+        """Lee un .xlsx y reporta qué se guardaría. No escribe nada (RN-q).
+
+        Es un POST por el tamaño del cuerpo, no por tener efectos: la escritura
+        la sigue haciendo cargar_notas_masivo cuando el docente confirma, con su
+        única ruta de validación. Así la vía Excel no puede saltarse ninguna
+        regla que la vía manual sí aplica.
+        """
+        # Fallar barato primero: no tiene sentido parsear 1000 filas para un
+        # curso ajeno o un periodo cerrado.
+        actividad = self._obtener_actividad_editable(id_actividad, usuario)
+        curso = actividad.seccion.curso
+        anio = curso.periodo.anio if curso.periodo is not None else date.today().year
+
+        try:
+            parseo = parsear_notas_xlsx(contenido)
+        except ArchivoInvalido as error:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+
+        estudiantes = self._estudiantes_del_curso(curso)
+        indices = self._indices_de_identidad(estudiantes)
+
+        errores: list[ErrorFila] = list(parseo.errores)
+        resueltas: list[tuple] = []          # (fila_cruda, estudiante)
+        filas_por_estudiante: dict[int, list] = {}
+
+        for fila in parseo.filas:
+            estudiante = indices[fila.clave].get(fila.valor)
+            if estudiante is None:
+                errores.append(ErrorFila(
+                    fila=fila.fila,
+                    columna=fila.clave,
+                    valor=str(fila.valor),
+                    mensaje=self._mensaje_sin_emparejar(fila.clave, fila.valor, anio),
+                ))
+                continue
+
+            resueltas.append((fila, estudiante))
+            filas_por_estudiante.setdefault(estudiante["id_estudiante"], []).append(fila)
+
+        # RN-m: dos filas para el mismo estudiante -> las dos son error y no se
+        # aplica ninguna. Se comprueba después de resolver la identidad, no
+        # sobre el texto del archivo: así también se detecta al estudiante que
+        # aparece una vez por documento y otra por correo.
+        duplicados = {
+            id_estudiante for id_estudiante, filas in filas_por_estudiante.items() if len(filas) > 1
+        }
+
+        filas_validas = []
+        for fila, estudiante in resueltas:
+            if estudiante["id_estudiante"] in duplicados:
+                numeros = ", ".join(str(f.fila) for f in filas_por_estudiante[estudiante["id_estudiante"]])
+                errores.append(ErrorFila(
+                    fila=fila.fila,
+                    columna=fila.clave,
+                    valor=str(fila.valor),
+                    mensaje=(
+                        f"{estudiante['nombre']} {estudiante['apellido']} aparece en más de una "
+                        f"fila (filas {numeros}). Deja una sola y vuelve a subir el archivo."
+                    ),
+                ))
+                continue
+
+            filas_validas.append({
+                "fila": fila.fila,
+                "id_estudiante": estudiante["id_estudiante"],
+                "calificacion": fila.calificacion,
+                "comentario": fila.comentario,
+                # Del sistema, no del archivo: el docente confirma contra lo que
+                # la base de datos dice que es esa persona.
+                "nombre": estudiante["nombre"],
+                "apellido": estudiante["apellido"],
+            })
+
+        errores.sort(key=lambda error: error.fila)
+
+        return {
+            "id_actividad": actividad.id_actividad,
+            "actividad": actividad.nombre,
+            "total_filas": parseo.total_filas,
+            "filas_validas": filas_validas,
+            "filas_omitidas": parseo.omitidas,
+            "errores": [vars(error) for error in errores],
+            "estudiantes_sin_nota": self._estudiantes_sin_nota(
+                actividad, estudiantes, mencionados=set(filas_por_estudiante),
+            ),
+        }
+
+    def _estudiantes_sin_nota(self, actividad: ActividadEvaluativa, estudiantes: list[dict],
+                              mencionados: set[int]) -> list[dict]:
+        """RN-u: matriculados que el archivo no menciona y que siguen sin nota.
+
+        Es el único caso que ningún error de fila puede detectar: el estudiante
+        que el archivo *no* nombra. Un docente que borró una fila sin darse
+        cuenta vería "10 notas guardadas" y todo parecería correcto. Cuenta
+        también las notas que ya estaban cargadas antes: si a Sara se la
+        pusieron a mano, no aparece.
+
+        Es un aviso, no un error: importar media clase es legítimo.
+        """
+        con_nota_previa = {
+            nota.id_estudiante for nota in self.nota_repo.listar(id_actividad=actividad.id_actividad)
+        }
+
+        return [
+            {
+                "id_estudiante": estudiante["id_estudiante"],
+                "nombre": estudiante["nombre"],
+                "apellido": estudiante["apellido"],
+            }
+            for estudiante in estudiantes
+            if estudiante["id_estudiante"] not in mencionados
+            and estudiante["id_estudiante"] not in con_nota_previa
+        ]
+
+    def generar_plantilla_notas(self, id_actividad: int, usuario: Usuario) -> tuple[bytes, str]:
+        """Un .xlsx con la lista real del curso y la columna de nota vacía.
+
+        Es lo que hace que el emparejamiento deje de ser un problema en el flujo
+        principal: el docente no tiene que escribir ninguna clave, solo las
+        notas. Devuelve (contenido, nombre de archivo).
+
+        El periodo cerrado no bloquea la descarga: consultar no es escribir. El
+        bloqueo aplica al importar y al confirmar (RN-d).
+        """
+        actividad = self.actividad_repo.buscar_por_id(id_actividad)
+        if not actividad:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
+
+        curso = actividad.seccion.curso
+        self._validar_pertenencia_curso(curso, usuario)
+
+        estudiantes = self._estudiantes_del_curso(curso)
+        notas_actuales = {
+            nota.id_estudiante: float(nota.calificacion)
+            for nota in self.nota_repo.listar(id_actividad=id_actividad)
+        }
+
+        libro = Workbook()
+        hoja = libro.active
+        # El nombre de la hoja dice a qué actividad pertenece el archivo sin
+        # meter el id_actividad en los datos (RN-w). Es ayuda visual: al
+        # importar no se lee, la verificación real la hace el frontend (§10.2).
+        hoja.title = _sanear_nombre_hoja(actividad.nombre)
+
+        hoja.append(list(COLUMNAS_PLANTILLA))
+        for indice, ancho in enumerate(ANCHOS_PLANTILLA, start=1):
+            hoja.cell(row=1, column=indice).font = Font(bold=True)
+            hoja.column_dimensions[get_column_letter(indice)].width = ancho
+
+        # Con 40 estudiantes el docente pierde de vista qué columna está llenando.
+        hoja.freeze_panes = "A2"
+
+        estudiantes.sort(key=lambda e: ((e["apellido"] or "").lower(), (e["nombre"] or "").lower()))
+        for estudiante in estudiantes:
+            hoja.append([
+                estudiante["nombre"],
+                estudiante["apellido"],
+                estudiante["correo"],
+                notas_actuales.get(estudiante["id_estudiante"]),
+                None,
+            ])
+            # El correo como texto: evita que Excel lo convierta en hipervínculo
+            # y que algún copiar/pegar arrastre el enlace en vez del texto.
+            hoja.cell(row=hoja.max_row, column=3).number_format = "@"
+
+        buffer = BytesIO()
+        libro.save(buffer)
+        libro.close()
+
+        nombre_archivo = "notas-{}-{}-{}.xlsx".format(
+            _sanear_trozo_archivo(curso.materia.nombre if curso.materia else "materia"),
+            _sanear_trozo_archivo(curso.grado.nombre if curso.grado else "grado"),
+            _sanear_trozo_archivo(actividad.nombre),
+        )
+
+        return buffer.getvalue(), nombre_archivo
 
     # --- Eliminaciones (HU16) ---
     def eliminar_actividad(self, id_actividad: int, usuario: Usuario) -> None:

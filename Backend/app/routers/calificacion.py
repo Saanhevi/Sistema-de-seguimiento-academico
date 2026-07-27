@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from app.core.dependencies import get_calificacion_service, require_role
 from app.schemas.calificacion import (
     ID_MAXIMO,
     ActividadEvaluativaCreate,
     ActividadEvaluativaResponse,
+    ImportacionNotasResponse,
     NotaCargaMasivaRequest,
     NotaCreate,
     NotaResponse,
     SeccionPorcentajeCreate,
     SeccionPorcentajeResponse,
 )
-from app.services.calificacion import CalificacionService
+from app.services.calificacion import MEDIA_TYPE_XLSX, CalificacionService
+from app.services.importacion_excel import TAMANO_MAXIMO_BYTES
 
 router = APIRouter(prefix="/api", tags=["Calificaciones"])
 
@@ -79,6 +82,53 @@ def cargar_notas_masivo(
 ):
     notas = [item.model_dump() for item in payload.notas]
     return service.cargar_notas_masivo(payload.id_actividad, notas, usuario)
+
+
+@router.get("/notas/plantilla-excel")
+def descargar_plantilla_notas(
+    id_actividad: int = Query(..., gt=0, le=ID_MAXIMO),
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    """HU22: .xlsx con la lista del curso y la columna de nota vacía.
+
+    Nombre, apellido y correo; sin documento (§7.2). El correo es la clave con
+    la que el archivo vuelve a emparejar, y es dato de contacto que el docente
+    ya maneja: el número de identificación no sale del sistema en un archivo.
+    """
+    contenido, nombre_archivo = service.generar_plantilla_notas(id_actividad, usuario)
+    return Response(
+        content=contenido,
+        media_type=MEDIA_TYPE_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
+    )
+
+
+@router.post("/notas/importar-excel", response_model=ImportacionNotasResponse)
+async def importar_notas_excel(
+    id_actividad: int = Form(..., gt=0, le=ID_MAXIMO),
+    archivo: UploadFile = File(...),
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    """HU22: previsualización. Valida el archivo y reporta, sin escribir nada (RN-q).
+
+    Quien escribe sigue siendo POST /api/notas/carga-masiva, con el payload que
+    el frontend arma a partir de `filas_validas`. Toda la lógica de RN-g a RN-w
+    vive en el servicio y en el parser, no aquí.
+    """
+    # Guarda de recurso, no regla de negocio: sin esto, `await archivo.read()`
+    # se traería a memoria un archivo de cualquier tamaño antes de que nadie
+    # pudiera rechazarlo. El límite real (RN-h) lo vuelve a aplicar el parser
+    # sobre los bytes, porque `size` lo reporta el cliente.
+    if archivo.size is not None and archivo.size > TAMANO_MAXIMO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El archivo pesa más de {TAMANO_MAXIMO_BYTES // (1024 * 1024)} MB.",
+        )
+
+    contenido = await archivo.read()
+    return service.previsualizar_importacion_notas(id_actividad, contenido, usuario)
 
 
 @router.post("/notas", response_model=NotaResponse)

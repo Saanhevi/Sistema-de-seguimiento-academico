@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { listarEstudiantesDeGrado, listarNotas, actualizarNota } from "../services/calificacionService";
 import { claseBadge, formatearNota, promedioSimple } from "../utils/notas";
 import CargaMasivaModal from "./CargaMasivaModal";
+import ImportarExcelModal from "./ImportarExcelModal";
 
 const claveNota = (idActividad, idEstudiante) => `${idActividad}-${idEstudiante}`;
 
@@ -20,6 +21,7 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
   const [borrador, setBorrador] = useState({ calificacion: "", comentario: "" });
   const [errorCelda, setErrorCelda] = useState("");
   const [modalMasiva, setModalMasiva] = useState(null);
+  const [modalImportar, setModalImportar] = useState(null);
 
   // Estudiantes del grado: solo cambian si cambia el curso.
   useEffect(() => {
@@ -76,6 +78,20 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
     });
     return resultado;
   }, [actividades, estudiantes, notas]);
+
+  /**
+   * Refresca el mapa de notas con lo que devolvió una carga masiva, sin recargar
+   * la página. Lo comparten los dos modales: la importación de Excel confirma
+   * contra el mismo endpoint que la carga manual.
+   */
+  const aplicarNotasGuardadas = (nuevas) =>
+    setNotas((previas) => {
+      const copia = { ...previas };
+      nuevas.forEach((nota) => {
+        copia[claveNota(nota.id_actividad, nota.id_estudiante)] = nota;
+      });
+      return copia;
+    });
 
   const abrirEditor = (idActividad, idEstudiante) => {
     if (!periodoAbierto) return;
@@ -237,6 +253,14 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
                       >
                         Carga masiva
                       </button>
+                      <button
+                        type="button"
+                        className="cal-btn secondary small"
+                        style={{ marginTop: "8px" }}
+                        onClick={() => setModalImportar(actividad)}
+                      >
+                        Importar Excel
+                      </button>
                     </div>
                   )}
                 </td>
@@ -252,15 +276,15 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
           estudiantes={estudiantes}
           notas={notas}
           onCerrar={() => setModalMasiva(null)}
-          onGuardadas={(nuevas) =>
-            setNotas((previas) => {
-              const copia = { ...previas };
-              nuevas.forEach((nota) => {
-                copia[claveNota(nota.id_actividad, nota.id_estudiante)] = nota;
-              });
-              return copia;
-            })
-          }
+          onGuardadas={aplicarNotasGuardadas}
+        />
+      )}
+
+      {modalImportar && (
+        <ImportarExcelModal
+          actividad={modalImportar}
+          onCerrar={() => setModalImportar(null)}
+          onGuardadas={aplicarNotasGuardadas}
         />
       )}
     </>
