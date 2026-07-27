@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import LoginPage from "../modules/auth/pages/LoginPage";
 import RegisterPage from "../modules/auth/pages/RegisterPage";
 import DashboardPage from "../modules/dashboard/pages/DashboardPage";
-import ChangePasswordPage from "../modules/auth/pages/changePasswordPage";
 import PortalAdmin from "../modules/dashboard/pages/admin/PortalAdmin";
 import { AdminCursos } from "../modules/dashboard/pages/admin/AdminCursos";
 import AdminEstudiantes from "../modules/dashboard/pages/admin/AdminEstudiantes";
@@ -17,6 +16,7 @@ import DocenteReportes from "../modules/dashboard/pages/docente/DocenteReportes"
 import PortalEstudiantil from "../modules/dashboard/pages/estudiante/PortalEstudiantil";
 import EstudianteAsistencia from "../modules/dashboard/pages/estudiante/EstudianteAsistencia";
 import EstudiantePerfil from "../modules/dashboard/pages/estudiante/EstudiantePerfil";
+import EstudianteCambioContrasena from "../modules/dashboard/pages/estudiante/EstudianteCambioContrasena";
 import EstudianteCalificaciones from "../modules/dashboard/pages/estudiante/EstudianteCalificaciones";
 
 
@@ -34,7 +34,21 @@ function RutaCambioPassword() {
 
     const { user } = useAuth();
 
-    return user ? <Navigate to="/dashboard" replace /> : <ChangePasswordPage />;
+    if (!user) return <Navigate to="/login" replace />;
+
+    if (user.rol === "Estudiante") {
+        return <Navigate to="/dashboard/estudiante/cambiar-password" replace />;
+    }
+
+    if (user.rol === "Docente") {
+        return <Navigate to="/dashboard/docente" replace />;
+    }
+
+    if (user.rol === "Administrador") {
+        return <Navigate to="/dashboard/admin" replace />;
+    }
+
+    return <Navigate to="/dashboard" replace />;
 
 }
 
@@ -89,6 +103,7 @@ export default function AppRouter() {
                         <Route path="asignaturas" element={<Navigate to="/dashboard/estudiante/calificaciones" replace />} />
                         <Route path="calificaciones" element={<EstudianteCalificaciones />} />
                         <Route path="perfil" element={<EstudiantePerfil />} />
+                        <Route path="cambiar-password" element={<EstudianteCambioContrasena />} />
                     </Route>
                 </Route>
                 <Route path="*" element={<RutaLogin />} />

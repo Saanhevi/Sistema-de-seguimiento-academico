@@ -1,8 +1,8 @@
 # Direccionamiento de las rutas de autenticación
 from fastapi import APIRouter, Depends
-from app.schemas.auth import LoginRequest, TokenResponse, CrearCuentaEstudiantilRequest, MensajeResponde, ActualizarPasswordRequest
+from app.schemas.auth import LoginRequest, TokenResponse, CrearCuentaEstudiantilRequest, MensajeResponde, ActualizarPasswordRequest, PerfilEstudianteResponse
 from app.services.auth import AuthService
-from app.core.dependencies import get_auth_service
+from app.core.dependencies import get_auth_service, require_role
 router = APIRouter(
     prefix="/api/auth",
     tags=["Autenticación"]
@@ -22,7 +22,15 @@ def crear_cuenta_estudiantil(
 
 @router.put("/estudiante/password", response_model=MensajeResponde)
 def actualizar_contrasena(
-    credentials : ActualizarPasswordRequest, 
-    service : AuthService = Depends(get_auth_service)
+    credentials: ActualizarPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+    usuario = Depends(require_role("Estudiante"))
 ):
-    return service.actualizar_contrasena(credentials)
+    return service.actualizar_contrasena(credentials, usuario)
+
+@router.get("/perfil-estudiante", response_model=PerfilEstudianteResponse)
+def obtener_perfil_estudiante(
+    service: AuthService = Depends(get_auth_service),
+    usuario = Depends(require_role("Estudiante"))
+):
+    return service.obtener_perfil_estudiante(usuario)

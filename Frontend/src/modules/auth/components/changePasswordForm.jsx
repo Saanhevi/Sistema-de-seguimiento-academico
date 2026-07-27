@@ -1,36 +1,34 @@
 import { useState } from "react";
 import { cambiarPassword } from "../services/authService";
-import { useNavigate } from "react-router-dom";
 
 export default function ChangePasswordForm() {
 
-    const [correo, setCorreo] = useState("");
     const [passwordAnterior, setPasswordAnterior] = useState("");
     const [passwordNueva, setPasswordNueva] = useState("");
-
-    const navigate = useNavigate();
+    const [mensajeExito, setMensajeExito] = useState("");
+    const [mensajeError, setMensajeError] = useState("");
 
     const handleSubmit = async (e) => {
 
         e.preventDefault();
+        setMensajeExito("");
+        setMensajeError("");
 
         try {
 
             await cambiarPassword({
-
-                correo,
                 password_anterior: passwordAnterior,
                 password_nueva: passwordNueva
 
             });
 
-            alert("Contraseña actualizada correctamente.");
-
-            navigate("/login");
+            setPasswordAnterior("");
+            setPasswordNueva("");
+            setMensajeExito("Contraseña actualizada correctamente.");
 
         } catch (error) {
 
-            alert(error.detail);
+            setMensajeError(error.detail || "No se pudo actualizar la contraseña.");
 
         }
 
@@ -42,19 +40,6 @@ export default function ChangePasswordForm() {
             className="login-form"
             onSubmit={handleSubmit}
         >
-
-            <label>
-
-                Correo electrónico
-
-                <input
-                    type="email"
-                    value={correo}
-                    onChange={(e) => setCorreo(e.target.value)}
-                    required
-                />
-
-            </label>
 
             <label>
 
@@ -87,6 +72,14 @@ export default function ChangePasswordForm() {
                 Cambiar contraseña
 
             </button>
+
+            {mensajeExito && (
+                <p className="cal-success">{mensajeExito}</p>
+            )}
+
+            {mensajeError && (
+                <p className="cal-error">{mensajeError}</p>
+            )}
 
         </form>
 

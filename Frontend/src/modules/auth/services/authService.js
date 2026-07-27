@@ -62,3 +62,21 @@ export async function cambiarPassword(datos) {
     }
 
 }
+
+export async function obtenerPerfilEstudiante() {
+
+    try {
+
+        const response = await api.get("/api/auth/perfil-estudiante");
+
+        return response.data;
+
+    } catch (error) {
+
+        throw error.response?.data || {
+            detail: "Error de conexión con el servidor"
+        };
+
+    }
+
+}

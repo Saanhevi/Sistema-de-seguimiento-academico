@@ -82,10 +82,6 @@ export default function LoginForm() {
                     Crear cuenta
                 </Link>
 
-                <Link to="/cambiar-password">
-                    Cambiar contraseña
-                </Link>
-
             </div>
         </form>
 

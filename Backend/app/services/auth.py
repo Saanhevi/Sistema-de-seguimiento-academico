@@ -1,9 +1,12 @@
 #Aquí va toda la lógica del sistema
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Session
 from app.schemas.auth import LoginRequest, CrearCuentaEstudiantilRequest, ActualizarPasswordRequest
 from app.models.usuario import Usuario
 from app.models.estudiante import Estudiante
+from app.models.matricula import Matricula
 from app.core.security import controlador_contrasena, create_access_token
 from app.repositories.usuario import UsuarioRepository
 from app.repositories.estudiante import EstudianteRepository
@@ -89,16 +92,16 @@ class AuthService:
                 "mensaje" : "Registro Exitoso"
             }
         
-    def actualizar_contrasena(self, credentials: ActualizarPasswordRequest ):
-        # Verificar si el correo existe 
-        usuario = self.repositorio.buscar_por_correo(credentials.correo)
-        
-        if not usuario: 
+    def actualizar_contrasena(self, credentials: ActualizarPasswordRequest, usuario_actual: Usuario):
+        # Se actualiza solo la cuenta autenticada, no una cuenta indicada por el body
+        usuario = self.repositorio.buscar_por_id(usuario_actual.id_usuario)
+
+        if not usuario:
             raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="El correo no existe"
-                )
-            
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="El usuario autenticado ya no existe"
+            )
+
         # Verificar que la contrasena_actual sea correcta 
         clave_correcta = controlador_contrasena.verificar_contrasena(credentials.password_anterior, usuario.password_hash)
         
@@ -109,7 +112,6 @@ class AuthService:
             )
         
         # La contraseña es correcta por lo que se puede cambiar 
-        
         clave_nueva = controlador_contrasena.hashear(credentials.password_nueva)
         
         usuario.password_hash = clave_nueva 
@@ -118,6 +120,39 @@ class AuthService:
         
         return {
             "mensaje" : "Actualizacion Completada"
+        }
+
+    def obtener_perfil_estudiante(self, usuario_actual: Usuario) -> dict:
+        usuario = self.repositorio.buscar_por_id(usuario_actual.id_usuario)
+
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="El usuario autenticado ya no existe"
+            )
+
+        if usuario.rol != "Estudiante":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para consultar este perfil"
+            )
+
+        query = (
+            select(Matricula)
+            .options(joinedload(Matricula.grado))
+            .where(Matricula.id_estudiante == usuario.id_usuario)
+            .order_by(Matricula.anio.desc(), Matricula.id_matricula.desc())
+        )
+
+        matricula_actual = self.session.execute(query).scalars().first()
+
+        return {
+            "id_usuario": usuario.id_usuario,
+            "nombres": usuario.nombres,
+            "apellidos": usuario.apellidos,
+            "correo": usuario.correo,
+            "grado_actual": matricula_actual.grado.nombre if matricula_actual and matricula_actual.grado else None,
+            "anio_matricula": matricula_actual.anio if matricula_actual else None,
         }
          
 # def credentials_verification(credentials: LoginRequest):
