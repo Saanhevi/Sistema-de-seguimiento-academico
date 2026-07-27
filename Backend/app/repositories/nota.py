@@ -90,10 +90,3 @@ class NotaRepository:
 
         calificaciones = [float(n.calificacion) for n in notas if n.calificacion is not None]
         return round(sum(calificaciones) / len(calificaciones), 2) if calificaciones else 0.0
-
-    def borrar_por_actividad(self, id_actividad: int):
-        # Borra todas las notas asociadas a una actividad
-        notas = self.listar(id_actividad=id_actividad)
-        for nota in notas:
-            self.session.delete(nota)
-        self.session.flush()
