@@ -29,3 +29,8 @@ class SeccionPorcentajeRepository:
     def buscar_por_id(self, id_seccion):
         query = select(SeccionPorcentaje).where(SeccionPorcentaje.id_seccion == id_seccion)
         return self.session.execute(query).scalars().first()
+
+    def borrar(self, seccion: SeccionPorcentaje):
+        # El llamador debe encargarse del commit si requiere transacción mayor
+        self.session.delete(seccion)
+        self.session.flush()

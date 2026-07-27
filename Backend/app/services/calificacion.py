@@ -218,3 +218,41 @@ class CalificacionService:
         
         # Llamamos al repositorio pasándole el ID de la materia y el ID del profesor
         return self.nota_repo.obtener_promedio_grupal_materia(id_materia, usuario.id_usuario)
+
+    # --- Eliminaciones (HU16) ---
+    def eliminar_actividad(self, id_actividad: int, usuario: Usuario) -> None:
+        actividad = self.actividad_repo.buscar_por_id(id_actividad)
+        if not actividad:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
+
+        # Validar pertenencia y periodo abierto
+        self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
+        self._validar_periodo_abierto(actividad)
+
+        # Borrar notas asociadas y la actividad
+        self.nota_repo.borrar_por_actividad(actividad.id_actividad)
+        self.actividad_repo.borrar(actividad)
+        self.session.commit()
+
+    def eliminar_seccion(self, id_seccion: int, usuario: Usuario) -> None:
+        seccion = self.seccion_repo.buscar_por_id(id_seccion)
+        if not seccion:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sección no encontrada")
+
+        # RN-03: validar pertenencia de curso
+        self._validar_pertenencia_curso(seccion.curso, usuario)
+
+        # Solo permitir en período abierto
+        periodo_estado = seccion.curso.periodo.estado
+        if periodo_estado != "Abierto":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El período académico de este curso no está abierto")
+
+        # Borrar actividades y sus notas
+        actividades = self.actividad_repo.listar(id_seccion=seccion.id_seccion)
+        for actividad in actividades:
+            self.nota_repo.borrar_por_actividad(actividad.id_actividad)
+            self.actividad_repo.borrar(actividad)
+
+        # Borrar la sección
+        self.seccion_repo.borrar(seccion)
+        self.session.commit()

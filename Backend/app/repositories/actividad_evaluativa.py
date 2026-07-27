@@ -31,3 +31,8 @@ class ActividadEvaluativaRepository:
     def buscar_por_id(self, id_actividad):
         query = select(ActividadEvaluativa).where(ActividadEvaluativa.id_actividad == id_actividad)
         return self.session.execute(query).scalars().first()
+
+    def borrar(self, actividad: ActividadEvaluativa):
+        # El llamador debe encargarse del commit si requiere transacción mayor
+        self.session.delete(actividad)
+        self.session.flush()

@@ -51,6 +51,26 @@ def listar_actividades(
     return service.listar_actividades(id_seccion=id_seccion, usuario=usuario)
 
 
+@router.delete("/actividades/{id_actividad}", status_code=204)
+def eliminar_actividad(
+    id_actividad: int,
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    service.eliminar_actividad(id_actividad, usuario)
+    return None
+
+
+@router.delete("/secciones/{id_seccion}", status_code=204)
+def eliminar_seccion(
+    id_seccion: int,
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    service.eliminar_seccion(id_seccion, usuario)
+    return None
+
+
 @router.post("/notas/carga-masiva", response_model=list[NotaResponse])
 def cargar_notas_masivo(
     payload: NotaCargaMasivaRequest,
@@ -67,6 +87,16 @@ def crear_nota(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
+    return service.crear_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario, usuario)
+
+
+@router.put("/notas", response_model=NotaResponse)
+def actualizar_nota(
+    payload: NotaCreate,
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    # Reutilizamos crear_nota como upsert validado (ver reglas RN-*)
     return service.crear_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario, usuario)
 
 
