@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,6 +20,8 @@ from app.repositories.matricula import MatriculaRepository
 
 class CursoService:
 
+    asociaciones_curso_estudiante: set[tuple[int, int]] = set()
+
     def __init__(self, session: Session):
         self.session = session
         self.grado_repo = GradoRepository(session)
@@ -39,6 +42,66 @@ class CursoService:
         if anio <= 0 or anio > 2100:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El año no es válido")
         return anio
+
+    def _obtener_curso_validado(self, id_curso: int, usuario_actual=None) -> Curso:
+        curso = self.curso_repo.buscar_por_id(id_curso)
+        if not curso:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso no encontrado")
+
+        if usuario_actual is not None and usuario_actual.rol == "Docente" and curso.id_docente != usuario_actual.id_usuario:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para gestionar este curso")
+
+        return curso
+
+    def _obtener_anio_curso(self, curso: Curso) -> int:
+        if curso.periodo and getattr(curso.periodo, "anio", None):
+            return int(curso.periodo.anio)
+        return date.today().year
+
+    def _serializar_curso_docente(self, curso: Curso) -> dict:
+        return {
+            "id_curso": curso.id_curso,
+            "id_docente": curso.id_docente,
+            "id_grado": curso.id_grado,
+            "id_materia": curso.id_materia,
+            "id_periodo": curso.id_periodo,
+            "grado": curso.grado.nombre,
+            "materia": curso.materia.nombre,
+            "periodo": curso.periodo.nombre,
+            "anio": self._obtener_anio_curso(curso),
+        }
+
+    def _obtener_estudiantes_matriculados_del_curso(self, curso: Curso) -> list[dict]:
+        anio_curso = self._obtener_anio_curso(curso)
+        query = (
+            select(
+                Matricula.id_estudiante,
+                Usuario.nombres,
+                Usuario.apellidos,
+                Usuario.correo,
+            )
+            .join(Estudiante, Estudiante.id_estudiante == Matricula.id_estudiante)
+            .join(Usuario, Usuario.id_usuario == Estudiante.id_estudiante)
+            .where(
+                Matricula.id_grado == curso.id_grado,
+                Matricula.anio == anio_curso,
+            )
+        )
+
+        rows = self.session.execute(query).all()
+        estudiantes = []
+
+        for row in rows:
+            asociado = (curso.id_curso, row.id_estudiante) in self.asociaciones_curso_estudiante
+            estudiantes.append({
+                "id_estudiante": row.id_estudiante,
+                "nombres": row.nombres,
+                "apellidos": row.apellidos,
+                "correo": row.correo,
+                "asociado": asociado,
+            })
+
+        return estudiantes
 
     def crear_grado(self, nombre: str) -> Grado:
         nombre_limpio = self._validar_nombre(nombre, "nombre del grado")
@@ -191,3 +254,80 @@ class CursoService:
             }
             for row in rows
         ]
+
+    def listar_cursos_docente(self, id_docente: int | None = None, usuario_actual=None):
+        if usuario_actual is not None and usuario_actual.rol != "Docente":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para consultar estos cursos")
+
+        if id_docente is None:
+            if usuario_actual is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se requiere el docente autenticado")
+            id_docente = usuario_actual.id_usuario
+        elif usuario_actual is not None and id_docente != usuario_actual.id_usuario:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No puedes consultar cursos de otro docente")
+
+        cursos = self.curso_repo.listar_por_docente(id_docente)
+
+        return [
+            self._serializar_curso_docente(curso)
+            for curso in cursos
+        ]
+
+    def listar_estudiantes_para_curso(self, id_curso: int, usuario_actual=None) -> dict:
+        curso = self._obtener_curso_validado(id_curso, usuario_actual=usuario_actual)
+        estudiantes = self._obtener_estudiantes_matriculados_del_curso(curso)
+
+        asociados = [estudiante for estudiante in estudiantes if estudiante["asociado"]]
+        disponibles = [estudiante for estudiante in estudiantes if not estudiante["asociado"]]
+
+        return {
+            "id_curso": curso.id_curso,
+            "grado": curso.grado.nombre,
+            "materia": curso.materia.nombre,
+            "periodo": curso.periodo.nombre,
+            "anio": self._obtener_anio_curso(curso),
+            "estudiantes_disponibles": disponibles,
+            "estudiantes_asociados": asociados,
+        }
+
+    def asociar_estudiante_a_curso(self, id_curso: int, id_estudiante: int, usuario_actual=None) -> dict:
+        curso = self._obtener_curso_validado(id_curso, usuario_actual=usuario_actual)
+
+        estudiante = self.session.get(Estudiante, id_estudiante)
+        if not estudiante:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estudiante no encontrado")
+
+        anio_curso = self._obtener_anio_curso(curso)
+        matricula = self.session.execute(
+            select(Matricula).where(
+                Matricula.id_estudiante == id_estudiante,
+                Matricula.id_grado == curso.id_grado,
+                Matricula.anio == anio_curso,
+            )
+        ).scalars().first()
+
+        if not matricula:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El estudiante no tiene matrícula vigente para el grado del curso",
+            )
+
+        clave = (curso.id_curso, id_estudiante)
+        if clave in self.asociaciones_curso_estudiante:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El estudiante ya fue agregado a este curso")
+
+        self.asociaciones_curso_estudiante.add(clave)
+
+        usuario_estudiante = self.session.get(Usuario, id_estudiante)
+        return {
+            "mensaje": "Estudiante agregado al curso correctamente",
+            "curso": self._serializar_curso_docente(curso),
+            "estudiante": {
+                "id_estudiante": estudiante.id_estudiante,
+                "nombres": usuario_estudiante.nombres if usuario_estudiante else "",
+                "apellidos": usuario_estudiante.apellidos if usuario_estudiante else "",
+                "correo": usuario_estudiante.correo if usuario_estudiante else None,
+                "asociado": True,
+            },
+        }
+            

@@ -93,6 +93,48 @@ class CursoResponse(BaseModel):
     docente: Optional[DocenteCursoResponse] = None
 
 
+class CursoDocenteResponse(BaseModel):
+    id_curso: int
+    id_docente: int
+    id_grado: int
+    id_materia: int
+    id_periodo: int
+    grado: str
+    materia: str
+    periodo: str
+    anio: int
+
+
+class CursoEstudianteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_estudiante: int
+    nombres: str
+    apellidos: str
+    correo: Optional[str] = None
+    asociado: bool = False
+
+
+class CursoEstudiantesResponse(BaseModel):
+    id_curso: int
+    grado: str
+    materia: str
+    periodo: str
+    anio: int
+    estudiantes_disponibles: list[CursoEstudianteResponse]
+    estudiantes_asociados: list[CursoEstudianteResponse]
+
+
+class CursoEstudianteAsignarRequest(BaseModel):
+    id_estudiante: int
+
+
+class CursoEstudianteAsignadoResponse(BaseModel):
+    mensaje: str
+    curso: CursoDocenteResponse
+    estudiante: CursoEstudianteResponse
+
+
 class MatriculaCreate(BaseModel):
     id_estudiante: int
     id_grado: int

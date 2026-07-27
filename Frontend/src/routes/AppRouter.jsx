@@ -11,6 +11,7 @@ import AdminEstudiantes from "../modules/dashboard/pages/admin/AdminEstudiantes"
 import { AdminProfesores } from "../modules/dashboard/pages/admin/AdminProfesores";
 import PortalDocente from "../modules/dashboard/pages/docente/PortalDocente";
 import DocenteAsistencia from "../modules/dashboard/pages/docente/DocenteAsistencia";
+import DocenteEstudiantes from "../modules/dashboard/pages/docente/DocenteEstudiantes";
 import DocenteCalificaciones from "../modules/dashboard/pages/docente/DocenteCalificaciones";
 import DocenteReportes from "../modules/dashboard/pages/docente/DocenteReportes";
 import PortalEstudiantil from "../modules/dashboard/pages/estudiante/PortalEstudiantil";
@@ -76,6 +77,7 @@ export default function AppRouter() {
                     <Route path="docente" element={<PortalDocente />}>
                         <Route index element={null} />
                         <Route path="asistencia" element={<DocenteAsistencia />} />
+                        <Route path="estudiantes" element={<DocenteEstudiantes />} />
                         <Route path="calificaciones" element={<DocenteCalificaciones />} />
                         <Route path="reportes" element={<DocenteReportes />} />
                     </Route>

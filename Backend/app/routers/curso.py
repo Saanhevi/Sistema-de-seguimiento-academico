@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_curso_service, get_session, require_role
 from app.schemas.curso import (
     CursoCreate,
+    CursoDocenteResponse,
+    CursoEstudianteAsignarRequest,
+    CursoEstudianteAsignadoResponse,
+    CursoEstudiantesResponse,
     CursoResponse,
     EstudianteMatriculadoResponse,
     GradoCreate,
@@ -13,6 +17,7 @@ from app.schemas.curso import (
     MatriculaResponse,
     PeriodoAcademicoCreate,
     PeriodoAcademicoResponse,
+    CursoDocenteResponse
 )
 from app.services.curso import CursoService
 
@@ -129,3 +134,30 @@ def listar_estudiantes_del_grado(
     usuario=Depends(require_role("Administrador", "Docente", "Estudiante")),
 ):
     return service.listar_estudiantes_por_grado(id_grado=id_grado, anio=anio)
+
+@router.get("/docente/cursos", response_model=list[CursoDocenteResponse])
+def listar_cursos_docente(
+    id_docente: int | None = None,
+    service : CursoService = Depends(get_curso_service)
+    , usuario=Depends(require_role("Docente"))
+):
+    return service.listar_cursos_docente(id_docente=id_docente, usuario_actual=usuario)
+
+
+@router.get("/cursos/{id_curso}/estudiantes", response_model=CursoEstudiantesResponse)
+def listar_estudiantes_curso(
+    id_curso: int,
+    service: CursoService = Depends(get_curso_service),
+    usuario=Depends(require_role("Docente")),
+):
+    return service.listar_estudiantes_para_curso(id_curso, usuario_actual=usuario)
+
+
+@router.post("/cursos/{id_curso}/estudiantes", response_model=CursoEstudianteAsignadoResponse)
+def asociar_estudiante_curso(
+    id_curso: int,
+    payload: CursoEstudianteAsignarRequest,
+    service: CursoService = Depends(get_curso_service),
+    usuario=Depends(require_role("Docente")),
+):
+    return service.asociar_estudiante_a_curso(id_curso, payload.id_estudiante, usuario_actual=usuario)
