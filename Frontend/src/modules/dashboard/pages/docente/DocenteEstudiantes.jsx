@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
-import { asociarEstudianteACurso, listarCursosDocente, listarEstudiantesPorCurso } from "../../../cursos/services/cursoService";
+import { asociarEstudianteACurso, crearMatricula, listarCursosDocente, listarEstudiantesPorCurso } from "../../../cursos/services/cursoService";
 
 function IconRefresh({ className = "" }) {
   return (
@@ -66,7 +66,12 @@ export default function DocenteEstudiantes() {
   const [cargandoCursos, setCargandoCursos] = useState(false);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [agregandoId, setAgregandoId] = useState(null);
+  const [matriculando, setMatriculando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [matriculaForm, setMatriculaForm] = useState({
+    id_estudiante: "",
+    anio: new Date().getFullYear(),
+  });
   const [mensaje, setMensaje] = useState({ type: "", text: "" });
 
   useEffect(() => {
@@ -118,7 +123,44 @@ export default function DocenteEstudiantes() {
   async function seleccionarCurso(idCurso) {
     setCursoSeleccionado(idCurso);
     setBusqueda("");
+    const curso = cursos.find((item) => String(item.id_curso) === String(idCurso));
+    setMatriculaForm((prev) => ({
+      ...prev,
+      anio: curso?.anio || new Date().getFullYear(),
+    }));
     await cargarDetalleCurso(idCurso);
+  }
+
+  async function matricularEstudiante(e) {
+    e.preventDefault();
+
+    if (!cursoActual) {
+      setMensaje({ type: "error", text: "Selecciona un curso para matricular estudiantes." });
+      return;
+    }
+
+    try {
+      setMatriculando(true);
+      await crearMatricula({
+        id_estudiante: Number(matriculaForm.id_estudiante),
+        id_grado: Number(cursoActual.id_grado),
+        anio: Number(matriculaForm.anio || cursoActual.anio),
+      });
+
+      setMensaje({
+        type: "success",
+        text: `Matrícula creada en ${cursoActual.grado} (${matriculaForm.anio}).`
+      });
+      setMatriculaForm((prev) => ({ ...prev, id_estudiante: "" }));
+      await cargarDetalleCurso(cursoSeleccionado);
+    } catch (error) {
+      setMensaje({
+        type: "error",
+        text: error.detail || "No fue posible registrar la matrícula para este estudiante."
+      });
+    } finally {
+      setMatriculando(false);
+    }
   }
 
   async function agregarEstudiante(estudiante) {
@@ -232,6 +274,43 @@ export default function DocenteEstudiantes() {
             </div>
           )}
 
+          {cursoActual && (
+            <form className="docente-matricula-form" onSubmit={matricularEstudiante}>
+              <h4>Matrícula por grado</h4>
+              <p>
+                Registra la matrícula del estudiante en el grado del curso seleccionado.
+              </p>
+              <div className="docente-inline-fields">
+                <label className="docente-field">
+                  <span>ID estudiante</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={matriculaForm.id_estudiante}
+                    onChange={(e) => setMatriculaForm((prev) => ({ ...prev, id_estudiante: e.target.value }))}
+                    placeholder="Ej. 15"
+                  />
+                </label>
+                <label className="docente-field">
+                  <span>Año académico</span>
+                  <input
+                    type="number"
+                    min="2000"
+                    max="2100"
+                    required
+                    value={matriculaForm.anio}
+                    onChange={(e) => setMatriculaForm((prev) => ({ ...prev, anio: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <button className="docente-refresh" type="submit" disabled={matriculando}>
+                {matriculando ? <IconLoader className="docente-spin" /> : <IconUserPlus />}
+                Matricular estudiante
+              </button>
+            </form>
+          )}
+
           {!cursoSeleccionado && !cargandoCursos && (
             <p className="docente-empty">Elige un curso para ver los estudiantes disponibles.</p>
           )}
@@ -259,7 +338,7 @@ export default function DocenteEstudiantes() {
 
           {cargandoDetalle ? (
             <div className="docente-loading">
-              <Loader2 size={18} className="docente-spin" />
+              <IconLoader className="docente-spin" />
               Cargando estudiantes...
             </div>
           ) : estudiantesDisponibles.length === 0 ? (
