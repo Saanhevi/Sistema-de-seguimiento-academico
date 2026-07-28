@@ -10,6 +10,7 @@ from app.services.auth import AuthService
 from app.services.curso import CursoService
 from app.services.calificacion import CalificacionService
 from app.services.asistencia import AsistenciaService
+from app.services.alerta import AlertaService
 
 # Obtener una session
 def get_session() -> Generator[Session, None, None]:
@@ -33,6 +34,9 @@ def get_calificacion_service(session = Depends(get_session)):
 
 def get_asistencia_service(session = Depends(get_session)):
     return AsistenciaService(session)
+
+def get_alerta_service(session = Depends(get_session)):
+    return AlertaService(session)
 
 # Esquema de autenticación: espera un header "Authorization: Bearer <token>"
 security_scheme = HTTPBearer()

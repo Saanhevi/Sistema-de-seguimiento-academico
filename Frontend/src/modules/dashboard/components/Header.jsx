@@ -1,11 +1,30 @@
 import { useAuth } from "../../../context/AuthContext";
+import { useEffect, useRef, useState } from "react";
+import { listarAlertas } from "../../alertas/services/alertaService";
 
 export default function Header() {
 
     const { user, logout } = useAuth();
+    const [open, setOpen] = useState(false);
+    const [alertas, setAlertas] = useState([]);
+    const [loadingAlertas, setLoadingAlertas] = useState(false);
+    const dropdownRef = useRef(null);
 
     const iniciales =
         `${user?.nombres?.[0] ?? ""}${user?.apellidos?.[0] ?? ""}`;
+
+    useEffect(() => {
+        if (!open) return;
+
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [open]);
 
     return (
 
@@ -46,9 +65,25 @@ export default function Header() {
 
             <div className="topbar-right">
 
+                <div ref={dropdownRef} style={{ position: 'relative' }}>
                 <button
                     className="notif-btn"
                     aria-label="Notificaciones"
+                    onClick={async () => {
+                        setOpen(!open);
+                        if (!open) {
+                            setLoadingAlertas(true);
+                            try {
+                                const res = await listarAlertas({ estado: 'Pendiente' });
+                                setAlertas(res || []);
+                            } catch (err) {
+                                console.error('Error cargando alertas', err);
+                                setAlertas([]);
+                            } finally {
+                                setLoadingAlertas(false);
+                            }
+                        }
+                    }}
                 >
 
                     <svg
@@ -71,6 +106,38 @@ export default function Header() {
                     <span className="dot"></span>
 
                 </button>
+
+                {open && (
+                    <div className="alerts-dropdown" style={{ position: 'absolute', right: 0, top: '40px', width: '320px', background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', borderRadius: 6, zIndex: 40 }}>
+                        <div style={{ padding: '8px 12px', borderBottom: '1px solid #eee', fontWeight: 600 }}>Alertas</div>
+                        {loadingAlertas ? (
+                            <div style={{ padding: 12 }}>Cargando...</div>
+                        ) : alertas.length === 0 ? (
+                            <div style={{ padding: 12 }}>No hay alertas</div>
+                        ) : (
+                            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                                {alertas.map((a) => (
+                                    <div key={a.id_alerta} style={{ padding: '10px 12px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 8 }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: 6, marginTop: 6, background: a.nivel === 'Alto' ? 'var(--alert)' : a.nivel === 'Medio' ? 'orange' : '#ccc' }} />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 600 }}>{a.tipo}</div>
+                                            {a.nombre_estudiante ? (
+                                                <div style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>
+                                                    Estudiante: {a.nombre_estudiante}
+                                                    {a.nombre_curso ? ` · Curso: ${a.nombre_curso}` : ''}
+                                                </div>
+                                            ) : null}
+                                            <div style={{ fontSize: 13 }}>{a.mensaje}</div>
+                                            <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>{new Date(a.fecha).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                </div>
 
                 <div className="user-pill">
 

@@ -15,6 +15,7 @@ from app.repositories.actividad_evaluativa import ActividadEvaluativaRepository
 from app.repositories.curso import CursoRepository
 from app.repositories.nota import NotaRepository
 from app.repositories.seccion_porcentaje import SeccionPorcentajeRepository
+from app.services.alerta import AlertaService
 
 
 class CalificacionService:
@@ -25,6 +26,7 @@ class CalificacionService:
         self.seccion_repo = SeccionPorcentajeRepository(session)
         self.actividad_repo = ActividadEvaluativaRepository(session)
         self.nota_repo = NotaRepository(session)
+        self.alerta_service = AlertaService(session)
 
     def _validar_pertenencia_curso(self, curso: Curso, usuario: Usuario) -> None:
         # RN-03: un Docente solo puede operar sobre los cursos que dicta él mismo;
@@ -125,6 +127,24 @@ class CalificacionService:
     def _validar_periodo_abierto(self, actividad: ActividadEvaluativa) -> None:
         self._validar_periodo_abierto_curso(actividad.seccion.curso)
 
+    def _refrescar_riesgo_academico(self, id_estudiante: int, actividad: ActividadEvaluativa) -> None:
+        try:
+            id_materia = actividad.seccion.curso.id_materia
+            id_curso = actividad.seccion.curso.id_curso
+            nombre_materia = actividad.seccion.curso.materia.nombre
+            promedio = self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia)
+
+            if promedio < 3.0:
+                mensaje = f"Promedio en {nombre_materia} es {promedio} (por debajo de 3)"
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", "Alto", mensaje, id_curso=id_curso)
+            elif promedio < 4.0:
+                mensaje = f"Promedio en {nombre_materia} es {promedio} (por debajo de 4.0)"
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", "Medio", mensaje, id_curso=id_curso)
+            else:
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", None, None, id_curso=id_curso)
+        except Exception:
+            pass
+
     def _bloquear_actividad(self, id_actividad: int) -> None:
         # Se usa un advisory lock transaccional por actividad para serializar
         # la eliminación de la actividad con cualquier upsert de notas.
@@ -207,6 +227,10 @@ class CalificacionService:
         nota = self._preparar_nota(id_actividad, id_estudiante, calificacion, comentario)
         self.session.commit()
         self.session.refresh(nota)
+        try:
+            self._refrescar_riesgo_academico(nota.id_estudiante, actividad)
+        except Exception:
+            pass
         return nota
 
     def actualizar_nota(self, id_actividad: int, id_estudiante: int, calificacion: float, comentario: str | None, usuario: Usuario) -> Nota:
@@ -229,6 +253,10 @@ class CalificacionService:
         self.session.flush()
         self.session.commit()
         self.session.refresh(nota_existente)
+        try:
+            self._refrescar_riesgo_academico(nota_existente.id_estudiante, actividad)
+        except Exception:
+            pass
         return nota_existente
 
     def cargar_notas_masivo(self, id_actividad: int, notas: list[dict], usuario: Usuario) -> list[Nota]:
@@ -271,6 +299,16 @@ class CalificacionService:
         self.session.commit()
         for nota in resultado:
             self.session.refresh(nota)
+
+        # Después de grabar las notas, chequear alertas por promedio para cada estudiante
+        actividad_obj = actividad
+        if actividad_obj:
+            for nota in resultado:
+                try:
+                    self._refrescar_riesgo_academico(nota.id_estudiante, actividad_obj)
+                except Exception:
+                    # No interrumpir la carga masiva si falla la generación de alertas
+                    pass
 
         return resultado
 

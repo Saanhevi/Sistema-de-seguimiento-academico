@@ -14,3 +14,4 @@ from .historial_asistencia import HistorialAsistencia
 from .dia_asistible import DiaAsistible
 from .actividad_evaluativa import ActividadEvaluativa
 from .nota import Nota
+from .alerta import Alerta
