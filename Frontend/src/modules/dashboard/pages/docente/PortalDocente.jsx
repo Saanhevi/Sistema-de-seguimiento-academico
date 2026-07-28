@@ -5,6 +5,8 @@ import Greeting from "../../components/Greeting";
 import { listarAlertas } from "../../../alertas/services/alertaService";
 import AlertasPanel from "../../../alertas/components/AlertasPanel";
 import { listarCursosDocente, listarEstudiantesPorCurso } from "../../../cursos/services/cursoService";
+import { obtenerPromedioGrupal } from "../../../calificaciones/services/calificacionService";
+import { formatearNota } from "../../../calificaciones/utils/notas";
 
 // PortalDocente: componente funcional para docentes que muestra
 // métricas clave, secciones activas y alertas de riesgo usando
@@ -43,13 +45,21 @@ export default function PortalDocente() {
         const cursosRes = await listarCursosDocente();
         const cursosConTotales = await Promise.all(
           (cursosRes || []).map(async (curso) => {
-            try {
-              const estudiantes = await listarEstudiantesPorCurso(curso.id_curso);
-              const total = (estudiantes.estudiantes_disponibles?.length || 0) + (estudiantes.estudiantes_asociados?.length || 0);
-              return { ...curso, total_estudiantes: total };
-            } catch {
-              return { ...curso, total_estudiantes: 0 };
-            }
+            // Las dos consultas de un curso son independientes y cada una absorbe su
+            // propio error, para que un curso sin notas no vacíe la lista entera.
+            const [total, promedioGrupal] = await Promise.all([
+              listarEstudiantesPorCurso(curso.id_curso)
+                .then((estudiantes) =>
+                  (estudiantes.estudiantes_disponibles?.length || 0) + (estudiantes.estudiantes_asociados?.length || 0)
+                )
+                .catch(() => 0),
+              // HU9: promedio grupal real de la materia y periodo del curso.
+              obtenerPromedioGrupal(curso.id_materia, curso.id_periodo)
+                .then((data) => data.promedio_grupal)
+                .catch(() => null)
+            ]);
+
+            return { ...curso, total_estudiantes: total, promedio_grupal: promedioGrupal };
           })
         );
         setCursos(cursosConTotales);
@@ -127,7 +137,9 @@ export default function PortalDocente() {
                     <div className={`risk-tag ${curso.riesgo === 'en riesgo' ? 'mid' : 'low'}`}>{curso.estudiantesRiesgoCount}</div>
                     <div className="progress-bar" style={{ marginTop: '6px' }}><div className="fill" style={{ width: `${curso.progreso}%` }}></div></div>
                   </div>
-                  <div className="section-avg">{curso.estudiantesRiesgoCount}</div>
+                  <div className="section-avg" title="Promedio grupal de la materia">
+                    {formatearNota(curso.promedio_grupal)}
+                  </div>
                 </div>
               ))
             )}
