@@ -15,6 +15,7 @@ from app.repositories.actividad_evaluativa import ActividadEvaluativaRepository
 from app.repositories.curso import CursoRepository
 from app.repositories.nota import NotaRepository
 from app.repositories.seccion_porcentaje import SeccionPorcentajeRepository
+from app.services.alerta import AlertaService
 
 
 class CalificacionService:
@@ -25,6 +26,7 @@ class CalificacionService:
         self.seccion_repo = SeccionPorcentajeRepository(session)
         self.actividad_repo = ActividadEvaluativaRepository(session)
         self.nota_repo = NotaRepository(session)
+        self.alerta_service = AlertaService(session)
 
     def _validar_pertenencia_curso(self, curso: Curso, usuario: Usuario) -> None:
         # RN-03: un Docente solo puede operar sobre los cursos que dicta él mismo;
@@ -116,25 +118,88 @@ class CalificacionService:
         if usuario is None or usuario.rol != "Estudiante" or estudiante is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El estudiante debe existir y tener rol Estudiante")
 
-    def _validar_periodo_abierto(self, actividad: ActividadEvaluativa) -> None:
+    def _validar_periodo_abierto_curso(self, curso: Curso) -> None:
         # RN-d: solo se pueden crear/cargar notas si el período del curso está 'Abierto'
-        periodo_estado = actividad.seccion.curso.periodo.estado
+        periodo_estado = curso.periodo.estado
         if periodo_estado != "Abierto":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El período académico de este curso no está abierto")
+
+    def _validar_periodo_abierto(self, actividad: ActividadEvaluativa) -> None:
+        self._validar_periodo_abierto_curso(actividad.seccion.curso)
+
+    def _refrescar_riesgo_academico(self, id_estudiante: int, actividad: ActividadEvaluativa) -> None:
+        try:
+            id_materia = actividad.seccion.curso.id_materia
+            id_curso = actividad.seccion.curso.id_curso
+            nombre_materia = actividad.seccion.curso.materia.nombre
+            promedio = self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia)
+
+            if promedio < 3.0:
+                mensaje = f"Promedio en {nombre_materia} es {promedio} (por debajo de 3)"
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", "Alto", mensaje, id_curso=id_curso)
+            elif promedio < 4.0:
+                mensaje = f"Promedio en {nombre_materia} es {promedio} (por debajo de 4.0)"
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", "Medio", mensaje, id_curso=id_curso)
+            else:
+                self.alerta_service.refrescar_alerta(id_estudiante, "Riesgo académico", None, None, id_curso=id_curso)
+        except Exception:
+            pass
+
+    def _bloquear_actividad(self, id_actividad: int) -> None:
+        # Se usa un advisory lock transaccional por actividad para serializar
+        # la eliminación de la actividad con cualquier upsert de notas.
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(:id_actividad, -1)"),
+            {"id_actividad": id_actividad},
+        )
 
     def _bloquear_nota(self, id_actividad: int, id_estudiante: int) -> None:
         # RN-f: Nota no tiene constraint único en (id_actividad, id_estudiante) en el esquema;
         # se usa un advisory lock transaccional para serializar el upsert entre requests
         # concurrentes sin tener que modificar Database/schemas.sql.
+        self._bloquear_actividad(id_actividad)
         self.session.execute(
             text("SELECT pg_advisory_xact_lock(:id_actividad, :id_estudiante)"),
             {"id_actividad": id_actividad, "id_estudiante": id_estudiante},
         )
 
-    def _preparar_nota(self, id_actividad: int, id_estudiante: int, calificacion: float, comentario: str | None) -> Nota:
+    def _bloquear_notas_de_actividad(self, id_actividad: int) -> None:
+        self._bloquear_actividad(id_actividad)
+
+        resultado = self.session.execute(
+            text("SELECT id_estudiante FROM nota WHERE id_actividad = :id_actividad"),
+            {"id_actividad": id_actividad},
+        )
+        ids_estudiantes = []
+        scalars = getattr(resultado, "scalars", None)
+        if scalars is not None:
+            all_ids = getattr(scalars, "all", None)
+            if callable(all_ids):
+                ids_estudiantes = all_ids()
+        if not isinstance(ids_estudiantes, list):
+            try:
+                ids_estudiantes = list(ids_estudiantes)
+            except TypeError:
+                ids_estudiantes = []
+        for id_estudiante in ids_estudiantes:
+            self.session.execute(
+                text("SELECT pg_advisory_xact_lock(:id_actividad, :id_estudiante)"),
+                {"id_actividad": id_actividad, "id_estudiante": int(id_estudiante)},
+            )
+
+    def _preparar_nota(
+        self,
+        id_actividad: int,
+        id_estudiante: int,
+        calificacion: float,
+        comentario: str | None,
+        nota_existente: Nota | None = None,
+    ) -> Nota:
         self._bloquear_nota(id_actividad, id_estudiante)
 
-        nota_existente = self.nota_repo.buscar_por_actividad_y_estudiante(id_actividad, id_estudiante)
+        if nota_existente is None:
+            nota_existente = self.nota_repo.buscar_por_actividad_y_estudiante(id_actividad, id_estudiante)
+
         if nota_existente:
             nota_existente.calificacion = calificacion
             nota_existente.comentario = comentario
@@ -162,7 +227,37 @@ class CalificacionService:
         nota = self._preparar_nota(id_actividad, id_estudiante, calificacion, comentario)
         self.session.commit()
         self.session.refresh(nota)
+        try:
+            self._refrescar_riesgo_academico(nota.id_estudiante, actividad)
+        except Exception:
+            pass
         return nota
+
+    def actualizar_nota(self, id_actividad: int, id_estudiante: int, calificacion: float, comentario: str | None, usuario: Usuario) -> Nota:
+        actividad = self.actividad_repo.buscar_por_id(id_actividad)
+        if not actividad:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
+
+        self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
+        self._validar_calificacion(calificacion)
+        self._validar_estudiante(id_estudiante)
+        self._validar_periodo_abierto(actividad)
+
+        nota_existente = self.nota_repo.buscar_por_actividad_y_estudiante(id_actividad, id_estudiante)
+        if not nota_existente:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nota no encontrada")
+
+        self._bloquear_nota(id_actividad, id_estudiante)
+        nota_existente.calificacion = calificacion
+        nota_existente.comentario = comentario
+        self.session.flush()
+        self.session.commit()
+        self.session.refresh(nota_existente)
+        try:
+            self._refrescar_riesgo_academico(nota_existente.id_estudiante, actividad)
+        except Exception:
+            pass
+        return nota_existente
 
     def cargar_notas_masivo(self, id_actividad: int, notas: list[dict], usuario: Usuario) -> list[Nota]:
         actividad = self.actividad_repo.buscar_por_id(id_actividad)
@@ -183,14 +278,37 @@ class CalificacionService:
 
         # Fase 2: preparar todas las notas (add/flush, sin commit) y confirmar el lote entero
         # en una sola transacción.
-        resultado = [
-            self._preparar_nota(id_actividad, item["id_estudiante"], item["calificacion"], item.get("comentario"))
-            for item in notas
-        ]
+        resultado = []
+        for item in notas:
+            comentario = item.get("comentario")
+            nota_existente = None
+            if comentario is None:
+                nota_existente = self.nota_repo.buscar_por_actividad_y_estudiante(id_actividad, item["id_estudiante"])
+                comentario = getattr(nota_existente, "comentario", None) if nota_existente else None
+
+            resultado.append(
+                self._preparar_nota(
+                    id_actividad,
+                    item["id_estudiante"],
+                    item["calificacion"],
+                    comentario,
+                    nota_existente,
+                )
+            )
 
         self.session.commit()
         for nota in resultado:
             self.session.refresh(nota)
+
+        # Después de grabar las notas, chequear alertas por promedio para cada estudiante
+        actividad_obj = actividad
+        if actividad_obj:
+            for nota in resultado:
+                try:
+                    self._refrescar_riesgo_academico(nota.id_estudiante, actividad_obj)
+                except Exception:
+                    # No interrumpir la carga masiva si falla la generación de alertas
+                    pass
 
         return resultado
 
@@ -216,38 +334,48 @@ class CalificacionService:
 
     # --- Eliminaciones (HU16) ---
     def eliminar_actividad(self, id_actividad: int, usuario: Usuario) -> None:
-        actividad = self.actividad_repo.buscar_por_id(id_actividad)
-        if not actividad:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
+        try:
+            actividad = self.actividad_repo.buscar_por_id(id_actividad)
+            if not actividad:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actividad no encontrada")
 
-        # Validar pertenencia y periodo abierto
-        self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
-        self._validar_periodo_abierto(actividad)
+            # Validar pertenencia y periodo abierto
+            self._validar_pertenencia_curso(actividad.seccion.curso, usuario)
+            self._validar_periodo_abierto(actividad)
 
-        # Borrar notas asociadas y la actividad
-        self.nota_repo.borrar_por_actividad(actividad.id_actividad)
-        self.actividad_repo.borrar(actividad)
-        self.session.commit()
+            # Bloquear concurrentes de upsert sobre las notas de esta actividad antes de borrar
+            self._bloquear_notas_de_actividad(actividad.id_actividad)
 
-    def eliminar_seccion(self, id_seccion: int, usuario: Usuario) -> None:
-        seccion = self.seccion_repo.buscar_por_id(id_seccion)
-        if not seccion:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sección no encontrada")
-
-        # RN-03: validar pertenencia de curso
-        self._validar_pertenencia_curso(seccion.curso, usuario)
-
-        # Solo permitir en período abierto
-        periodo_estado = seccion.curso.periodo.estado
-        if periodo_estado != "Abierto":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El período académico de este curso no está abierto")
-
-        # Borrar actividades y sus notas
-        actividades = self.actividad_repo.listar(id_seccion=seccion.id_seccion)
-        for actividad in actividades:
+            # Borrar notas asociadas y la actividad
             self.nota_repo.borrar_por_actividad(actividad.id_actividad)
             self.actividad_repo.borrar(actividad)
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
 
-        # Borrar la sección
-        self.seccion_repo.borrar(seccion)
-        self.session.commit()
+    def eliminar_seccion(self, id_seccion: int, usuario: Usuario) -> None:
+        try:
+            seccion = self.seccion_repo.buscar_por_id(id_seccion)
+            if not seccion:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sección no encontrada")
+
+            # RN-03: validar pertenencia de curso
+            self._validar_pertenencia_curso(seccion.curso, usuario)
+            self._validar_periodo_abierto_curso(seccion.curso)
+
+            # Borrar actividades y sus notas
+            actividades = self.actividad_repo.listar(id_seccion=seccion.id_seccion)
+            id_actividades = [actividad.id_actividad for actividad in actividades]
+            for actividad in actividades:
+                self._bloquear_notas_de_actividad(actividad.id_actividad)
+
+            self.nota_repo.borrar_por_actividades(id_actividades)
+            self.actividad_repo.borrar_por_seccion(seccion.id_seccion)
+
+            # Borrar la sección
+            self.seccion_repo.borrar(seccion)
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise

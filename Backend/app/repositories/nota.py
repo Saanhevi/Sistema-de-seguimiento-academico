@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func
 from app.models.nota import Nota
 from app.models.actividad_evaluativa import ActividadEvaluativa
 from app.models.seccion_porcentaje import SeccionPorcentaje
@@ -174,8 +174,16 @@ class NotaRepository:
         return round(promedio_grupal, 2)
 
     def borrar_por_actividad(self, id_actividad: int):
-        # Borra todas las notas asociadas a una actividad
-        notas = self.listar(id_actividad=id_actividad)
-        for nota in notas:
-            self.session.delete(nota)
+        # Borra todas las notas asociadas a una actividad con una sola sentencia.
+        self.session.execute(
+            delete(Nota).where(Nota.id_actividad == id_actividad)
+        )
+        self.session.flush()
+
+    def borrar_por_actividades(self, id_actividades: list[int]):
+        if not id_actividades:
+            return
+        self.session.execute(
+            delete(Nota).where(Nota.id_actividad.in_(id_actividades))
+        )
         self.session.flush()

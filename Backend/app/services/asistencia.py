@@ -2,9 +2,13 @@ from sqlalchemy.orm import Session
 from app.schemas.asistencia import AsistenciaRequest
 from app.repositories.asistencia import AsistenciaRepository
 from app.repositories.curso import CursoRepository
+from app.models.curso import Curso
+from app.models.dia_asistible import DiaAsistible
 from app.models.historial_asistencia import HistorialAsistencia
+from app.models.usuario import Usuario
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
+from app.services.alerta import AlertaService
 
 class AsistenciaService:
     """Servicio temporal para el módulo de asistencia.
@@ -17,14 +21,33 @@ class AsistenciaService:
         self.session = session
         self.asistencia_repository = AsistenciaRepository(session)
         self.curso_repository = CursoRepository(session)
-        
-    def lista_asistencia(self, id_curso, fecha):
+        self.alerta_service = AlertaService(session)
+
+    def _obtener_curso_validado(self, id_curso, usuario: Usuario | None = None) -> Curso:
+        curso = self.curso_repository.buscar_por_id(id_curso)
+        if not curso:
+            raise HTTPException(status_code=404, detail="Curso no encontrado")
+
+        if usuario is not None and usuario.rol == "Docente" and curso.id_docente != usuario.id_usuario:
+            raise HTTPException(status_code=403, detail="No tienes permiso sobre este curso")
+
+        return curso
+
+    def _validar_dia_asistible_pertenece_docente(self, id_dia, usuario: Usuario | None = None) -> DiaAsistible:
+        dia_asistible = self.session.get(DiaAsistible, id_dia)
+        if not dia_asistible:
+            raise HTTPException(status_code=404, detail="Día asistible no encontrado")
+
+        self._obtener_curso_validado(dia_asistible.id_curso, usuario)
+        return dia_asistible
+
+    def lista_asistencia(self, id_curso, fecha, usuario: Usuario | None = None):
         #Se verifica si hay un dia asistible para tal curso y fecha 
         # Si no existe, se crea automáticamente el día asistible
         # Si hay entonces se muestra directamente 
         
+        curso = self._obtener_curso_validado(id_curso, usuario)
         dia_asistible = self.asistencia_repository.consultar_dia_asistible(id_curso, fecha)
-        curso = self.curso_repository.buscar_por_id(id_curso)
         grado = curso.grado
         materia = curso.materia
         anio = curso.periodo.anio        
@@ -83,22 +106,35 @@ class AsistenciaService:
                 h.id_estudiante : h.estado
                 for h in historial
             }
+            historial_faltante = False
             
             for matricula in matriculas:
                 estudiante = matricula.estudiante
                 id_estudiante = estudiante.id_estudiante
                 nombres = estudiante.usuario.nombres 
                 apellidos = estudiante.usuario.apellidos
+                estado = estados.get(id_estudiante, "Presente")
+
+                if id_estudiante not in estados:
+                    historial_asistencia = HistorialAsistencia(
+                        id_dia=id_dia,
+                        id_estudiante=id_estudiante,
+                        estado=estado
+                    )
+                    self.session.add(historial_asistencia)
+                    estados[id_estudiante] = estado
+                    historial_faltante = True
                 
                 asistencia = {
                     "id_estudiante" :id_estudiante,
                     "nombres": nombres,
                     "apellidos": apellidos,
-                    "estado": estados[id_estudiante]
+                    "estado": estado
                 }
                 
                 asistencias.append(asistencia)
-                
+            if historial_faltante:
+                self.session.commit()
             return {
                     "id_dia": id_dia,
                     "grado": grado.nombre,
@@ -108,12 +144,15 @@ class AsistenciaService:
             }
         
 
-    def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
+    def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest], usuario: Usuario | None = None):
+        estudiantes_ids = [r.id_estudiante for r in lista_asistencia]
         try:
+            dia = self._validar_dia_asistible_pertenece_docente(id_dia, usuario)
+
             for registro in lista_asistencia:
                 filas = self.asistencia_repository.actualizar_registro_asistencia(
                     id_dia,
-                    registro.id_estudiante, 
+                    registro.id_estudiante,
                     registro.estado
                 )
 
@@ -122,13 +161,32 @@ class AsistenciaService:
                         status_code=404,
                         detail=f"El estudiante {registro.id_estudiante} no pertenece a esta lista."
                     )
-                
+
             self.session.commit()
-            return {"mensaje" : "Actualizacion correcta"}
-            
+
         except SQLAlchemyError:
             self.session.rollback()
-            raise
+            raise HTTPException(
+                status_code=400,
+                detail="Estado de asistencia inválido. Valores permitidos: Presente, Ausente, Retardo, Excusa."
+            )
+
+        # Después de actualizar, verificar si alguna cuenta de ausencias cruzó el umbral (>=3).
+        # Va fuera del try para que un fallo al refrescar alertas no se reporte como
+        # "estado inválido" cuando la asistencia ya se guardó correctamente.
+        for id_est in estudiantes_ids:
+            try:
+                historial = self.asistencia_repository.listar_historial_estudiante(id_est)
+                ausencias_despues = sum(1 for h in historial if h.estado == "Ausente")
+                if ausencias_despues >= 3:
+                    mensaje = f"Inasistencias registradas: {ausencias_despues}"
+                    self.alerta_service.refrescar_alerta(id_est, "Inasistencias", "Alto", mensaje, id_curso=dia.id_curso)
+                else:
+                    self.alerta_service.refrescar_alerta(id_est, "Inasistencias", None, None, id_curso=dia.id_curso)
+            except Exception:
+                pass
+
+        return {"mensaje" : "Actualizacion correcta"}
     
     def consultar_asistencias_estudiante(self, id_estudiante):
         registros_asistencias = self.asistencia_repository.listar_historial_estudiante(id_estudiante)
@@ -162,8 +220,8 @@ class AsistenciaService:
             }
         ]"""
     
-    def historial_dias_curso(self, id_curso):
-        curso = self.curso_repository.buscar_por_id(id_curso)
+    def historial_dias_curso(self, id_curso, usuario: Usuario | None = None):
+        curso = self._obtener_curso_validado(id_curso, usuario)
         dias_asistibles =  sorted(
             curso.dias_asistibles,
             key=lambda dia: dia.fecha,

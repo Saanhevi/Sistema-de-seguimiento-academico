@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.core.dependencies import get_calificacion_service, require_role
 from app.schemas.calificacion import (
@@ -54,7 +54,7 @@ def listar_actividades(
 
 @router.delete("/actividades/{id_actividad}", status_code=204)
 def eliminar_actividad(
-    id_actividad: int,
+    id_actividad: int = Path(..., gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
@@ -64,7 +64,7 @@ def eliminar_actividad(
 
 @router.delete("/secciones/{id_seccion}", status_code=204)
 def eliminar_seccion(
-    id_seccion: int,
+    id_seccion: int = Path(..., gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
@@ -97,8 +97,8 @@ def actualizar_nota(
     service: CalificacionService = Depends(get_calificacion_service),
     usuario=Depends(require_role("Administrador", "Docente")),
 ):
-    # Reutilizamos crear_nota como upsert validado (ver reglas RN-*)
-    return service.crear_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario, usuario)
+    # PUT tiene semántica de actualización explícita: solo modifica notas existentes.
+    return service.actualizar_nota(payload.id_actividad, payload.id_estudiante, payload.calificacion, payload.comentario, usuario)
 
 
 @router.get("/notas", response_model=list[NotaResponse])
