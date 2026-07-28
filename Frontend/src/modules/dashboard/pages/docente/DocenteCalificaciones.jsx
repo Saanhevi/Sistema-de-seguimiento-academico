@@ -4,6 +4,7 @@ import SelectorCurso from "../../../calificaciones/components/SelectorCurso";
 import EstadoPeriodo from "../../../calificaciones/components/EstadoPeriodo";
 import SeccionPanel from "../../../calificaciones/components/SeccionPanel";
 import TablaNotas from "../../../calificaciones/components/TablaNotas";
+import PanelPromediosMateria from "../../../calificaciones/components/PanelPromediosMateria";
 import { listarActividades } from "../../../calificaciones/services/calificacionService";
 
 /**
@@ -83,6 +84,13 @@ export default function DocenteCalificaciones() {
       {curso && (
         <>
           <EstadoPeriodo periodo={curso.periodo} />
+
+          <section className="cal-card">
+            <div className="cal-card-head">
+              <h3 className="cal-section-title">Promedios de la materia</h3>
+            </div>
+            <PanelPromediosMateria key={curso.id_curso} curso={curso} />
+          </section>
 
           <section className="cal-card">
             <SeccionPanel

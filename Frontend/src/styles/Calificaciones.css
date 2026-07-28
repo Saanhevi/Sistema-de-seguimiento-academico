@@ -665,3 +665,17 @@
   color: var(--ink-muted);
   margin: 0 0 10px;
 }
+
+/* Cabecera de los promedios de la materia (HU8/HU9): la tarjeta del grupal y el
+   conteo de calificados en una sola fila, que baja a columna en pantallas angostas. */
+.cal-promedios-resumen {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cal-promedios-resumen .cal-hint {
+  margin: 0;
+}

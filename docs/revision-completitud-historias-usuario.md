@@ -37,6 +37,16 @@ Se identificaron **15 hallazgos**, encabezados por:
 | HU12 | Añadir estudiantes a mi materia | ✅ | **Sin persistencia** | **Incompleta (H2)** |
 | HU14 | Eliminar inasistencias | ✅ | **No implementada** | **No cumple (H1)** |
 
+> **Actualización 2026-07-28 — HU8 y HU9.** Las dos filas de arriba reflejan la revisión
+> del 2026-07-26 y se dejan como quedaron. Desde entonces se cerraron: H15b (el docente
+> ya tiene interfaz, en *Gestión de calificaciones* y en el portal), H10 (el promedio
+> pondera por sección y ya no mezcla periodos; la fórmula vive en un solo lugar del
+> repositorio), H7 (el administrador obtiene el grupal en vez de 0.0), H13 (sin notas
+> devuelve `null`, no 0.0) y H4/H11 (RN-03 se aplica al promedio individual, así que un
+> docente no lee materias que no dicta). Pendiente de decisión: el promedio se normaliza
+> sobre las secciones ya calificadas, así que un corte incompleto se reporta como
+> definitivo; hay una prueba que lo documenta.
+
 ---
 
 ## 2. Hallazgos detallados
