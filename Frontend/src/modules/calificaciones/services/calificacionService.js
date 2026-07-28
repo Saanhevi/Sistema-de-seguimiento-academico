@@ -149,6 +149,21 @@ async function obtenerPromedioGrupal(idMateria, idPeriodo) {
     throw error.response?.data || ERROR_CONEXION;
   }
 }
+// HU8: una sola llamada devuelve el promedio de todos los estudiantes de la materia,
+// en vez de pedir /api/notas/promedio una vez por estudiante.
+async function obtenerPromediosEstudiantes(idMateria, idPeriodo) {
+  try {
+    const response = await api.get(`/api/materia/${idMateria}/promedios-estudiantes`, {
+      params: {
+        id_periodo: idPeriodo
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || ERROR_CONEXION;
+  }
+}
+
 export {
   listarMisCursos,
   listarMisCursosEstudiante,
@@ -166,5 +181,6 @@ export {
   eliminarActividad,
   eliminarSeccion,
   obtenerPromedioEstudiante,
-  obtenerPromedioGrupal
+  obtenerPromedioGrupal,
+  obtenerPromediosEstudiantes
 };
