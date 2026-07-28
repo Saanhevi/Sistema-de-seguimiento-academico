@@ -1,0 +1,9 @@
+import scripts.s_01_usuarios
+import scripts.s_02_grados_materias_periodos
+import scripts.s_03_matriculas
+import scripts.s_04_cursos
+import scripts.s_05_secciones
+import scripts.s_06_actividades
+import scripts.s_07_notas
+import scripts.s_08_dias_asistibles
+import scripts.s_09_historial_asistencia

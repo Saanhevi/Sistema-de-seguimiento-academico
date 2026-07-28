@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from app.models.actividad_evaluativa import ActividadEvaluativa
 from app.models.seccion_porcentaje import SeccionPorcentaje
 
@@ -35,4 +35,10 @@ class ActividadEvaluativaRepository:
     def borrar(self, actividad: ActividadEvaluativa):
         # El llamador debe encargarse del commit si requiere transacción mayor
         self.session.delete(actividad)
+        self.session.flush()
+
+    def borrar_por_seccion(self, id_seccion: int):
+        self.session.execute(
+            delete(ActividadEvaluativa).where(ActividadEvaluativa.id_seccion == id_seccion)
+        )
         self.session.flush()

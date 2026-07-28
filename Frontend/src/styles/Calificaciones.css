@@ -511,17 +511,23 @@
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
 .cal-actividad-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   color: var(--ink);
+}
+
+.cal-actividad-comment-cell,
+.cal-actividad-comment-spacer {
+  min-width: 0;
 }
 
 .cal-actividad-item p.cal-actividad-comment {
@@ -542,41 +548,12 @@
   color: var(--teal-brand);
 }
 
-.cal-popup-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.cal-popup-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 18px;
-  width: min(90%, 420px);
-  box-shadow: 0 20px 60px rgba(17, 28, 28, 0.18);
-}
-
-.cal-popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.cal-popup-card p {
-  margin: 0;
-  color: var(--ink);
-  line-height: 1.6;
-}
-
 .cal-actividad-item button.cal-btn.icon {
   justify-self: end;
+}
+
+.cal-actividad-item.docente .cal-badge.empty {
+  display: none;
 }
 
 .cal-actividad-item:last-child {
@@ -590,19 +567,14 @@
 
 .cal-actividad-list {
   list-style: none;
+  list-style-type: none;
   margin: 0 0 12px;
   padding: 0;
 }
 
 .cal-actividad-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--ink);
+  list-style: none;
+  list-style-type: none;
 }
 
 .cal-actividad-item:last-child {
@@ -770,4 +742,18 @@
    ellos, que es donde el docente lo lee al decidir. */
 .cal-import .cal-modal-actions .cal-btn.secondary:first-child {
   margin-right: auto;
+}
+
+/* Cabecera de los promedios de la materia (HU8/HU9): la tarjeta del grupal y el
+   conteo de calificados en una sola fila, que baja a columna en pantallas angostas. */
+.cal-promedios-resumen {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cal-promedios-resumen .cal-hint {
+  margin: 0;
 }

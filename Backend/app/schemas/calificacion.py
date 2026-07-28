@@ -65,6 +65,17 @@ class NotaCargaMasivaRequest(BaseModel):
     notas: list[NotaCargaMasivaItem]
 
 
+class PromedioEstudianteResponse(BaseModel):
+    """Una fila de HU8: el promedio ponderado de un estudiante en una materia.
+
+    Solo lleva el id; el nombre lo resuelve quien ya tiene la lista de estudiantes
+    del grado, para no repetir ese join en cada consulta de promedios.
+    """
+
+    id_estudiante: int
+    promedio: float
+
+
 # --- HU22: importación desde Excel ---
 # La previsualización no escribe nada (RN-q): estos esquemas describen un
 # reporte, no un cambio. La escritura sigue siendo NotaCargaMasivaRequest.

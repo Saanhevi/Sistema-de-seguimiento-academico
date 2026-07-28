@@ -258,6 +258,19 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
         self.assertTrue(curso["docente"]["nombre"], "el nombre del profesor no puede venir vacío")
         self.assertTrue(curso["docente"]["apellido"])
 
+    def test_03_docente_actualiza_nota_existente_con_put(self):
+        """PUT /api/notas debe actualizar una nota ya registrada."""
+        status, nota = _peticion("PUT", "/api/notas", {
+            "id_actividad": self.id_actividad,
+            "id_estudiante": self.id_estudiante,
+            "calificacion": 4.8,
+            "comentario": "Revisado"
+        }, token=self.token_docente)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(nota["calificacion"], 4.8)
+        self.assertEqual(nota["comentario"], "Revisado")
+
     def test_02c_estudiante_no_ve_cursos_de_otro_anio_ni_de_otro_grado(self):
         """RN-10a: el alcance lo fija el backend, no el filtro que mande el cliente."""
         status, cursos = _peticion("GET", "/api/cursos", token=self.token_estudiante)
@@ -309,6 +322,142 @@ class FlujoCalificacionesIntegracionTests(unittest.TestCase):
         mias = [n for n in verificacion if n["id_estudiante"] == self.id_estudiante]
         self.assertEqual(len(mias), 1, "el upsert no debe duplicar la nota")
         self.assertEqual(mias[0]["calificacion"], 3.0)
+
+    def test_05a_carga_masiva_preserva_comentario_existente(self):
+        """Si no se envía comentario en la carga masiva, el comentario previo se conserva."""
+        seccion = self._crear(
+            "/api/secciones", self.token_docente,
+            {"nombre_seccion": "Preservar comentario", "porcentaje": 20, "id_curso": self.id_curso},
+        )
+        actividad = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act Conserva", "fecha": "2026-03-15", "id_seccion": seccion["id_seccion"]},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad["id_actividad"], "id_estudiante": self.id_estudiante,
+             "calificacion": 4.0, "comentario": "Buen trabajo"},
+        )
+
+        status, resultado = _peticion(
+            "POST", "/api/notas/carga-masiva",
+            {"id_actividad": actividad["id_actividad"],
+             "notas": [{"id_estudiante": self.id_estudiante, "calificacion": 4.2}]},
+            token=self.token_docente,
+        )
+        self.assertEqual(status, 200, resultado)
+        self.assertEqual(resultado[0]["calificacion"], 4.2)
+
+        _, verificacion = _peticion("GET", f"/api/notas?id_actividad={actividad['id_actividad']}", token=self.token_docente)
+        mias = [n for n in verificacion if n["id_estudiante"] == self.id_estudiante]
+        self.assertEqual(len(mias), 1)
+        self.assertEqual(mias[0]["comentario"], "Buen trabajo")
+
+    def test_05b_delete_activity_removes_only_its_notes(self):
+        """DELETE /api/actividades borra solo las notas de la actividad eliminada."""
+        seccion = self._crear(
+            "/api/secciones", self.token_docente,
+            {"nombre_seccion": "Eliminar actividad", "porcentaje": 20, "id_curso": self.id_curso},
+        )
+        actividad1 = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act A1", "fecha": "2026-03-15", "id_seccion": seccion["id_seccion"]},
+        )
+        actividad2 = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act A2", "fecha": "2026-03-15", "id_seccion": seccion["id_seccion"]},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad1["id_actividad"], "id_estudiante": self.id_estudiante, "calificacion": 4.0},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad2["id_actividad"], "id_estudiante": self.id_estudiante, "calificacion": 3.5},
+        )
+
+        status, _ = _peticion("DELETE", f"/api/actividades/{actividad1['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 204)
+
+        status, notas1 = _peticion("GET", f"/api/notas?id_actividad={actividad1['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 200)
+        self.assertEqual(notas1, [])
+
+        status, notas2 = _peticion("GET", f"/api/notas?id_actividad={actividad2['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(notas2), 1)
+        self.assertEqual(notas2[0]["id_actividad"], actividad2["id_actividad"])
+
+    def test_05c_delete_section_removes_activities_and_notes(self):
+        """DELETE /api/secciones borra actividades y sus notas, sin afectar otras secciones."""
+        seccion_b = self._crear(
+            "/api/secciones", self.token_docente,
+            {"nombre_seccion": "Eliminar sección", "porcentaje": 20, "id_curso": self.id_curso},
+        )
+        actividad_b1 = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act B1", "fecha": "2026-03-15", "id_seccion": seccion_b["id_seccion"]},
+        )
+        actividad_b2 = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act B2", "fecha": "2026-03-15", "id_seccion": seccion_b["id_seccion"]},
+        )
+        seccion_c = self._crear(
+            "/api/secciones", self.token_docente,
+            {"nombre_seccion": "Mantener sección", "porcentaje": 20, "id_curso": self.id_curso},
+        )
+        actividad_c = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act C1", "fecha": "2026-03-15", "id_seccion": seccion_c["id_seccion"]},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad_b1["id_actividad"], "id_estudiante": self.id_estudiante, "calificacion": 4.0},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad_b2["id_actividad"], "id_estudiante": self.id_estudiante, "calificacion": 3.5},
+        )
+        self._crear(
+            "/api/notas", self.token_docente,
+            {"id_actividad": actividad_c["id_actividad"], "id_estudiante": self.id_estudiante, "calificacion": 5.0},
+        )
+
+        status, _ = _peticion("DELETE", f"/api/secciones/{seccion_b['id_seccion']}", token=self.token_docente)
+        self.assertEqual(status, 204)
+
+        status, actividades_b = _peticion("GET", f"/api/actividades?id_seccion={seccion_b['id_seccion']}", token=self.token_docente)
+        self.assertEqual(status, 200)
+        self.assertEqual(actividades_b, [])
+
+        status, notas_b1 = _peticion("GET", f"/api/notas?id_actividad={actividad_b1['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 200)
+        self.assertEqual(notas_b1, [])
+
+        status, notas_c = _peticion("GET", f"/api/notas?id_actividad={actividad_c['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(notas_c), 1)
+        self.assertEqual(notas_c[0]["id_actividad"], actividad_c["id_actividad"])
+
+    def test_05d_delete_activity_closed_period_returns_400(self):
+        """DELETE /api/actividades no permite borrar actividades de un curso con periodo cerrado."""
+        seccion = self._crear(
+            "/api/secciones", self.token_docente,
+            {"nombre_seccion": "Cerrada", "porcentaje": 10, "id_curso": self.id_curso_cerrado},
+        )
+        actividad = self._crear(
+            "/api/actividades", self.token_docente,
+            {"nombre": "Act Cerrada", "fecha": "2026-03-15", "id_seccion": seccion["id_seccion"]},
+        )
+
+        status, _ = _peticion("DELETE", f"/api/actividades/{actividad['id_actividad']}", token=self.token_docente)
+        self.assertEqual(status, 400)
+
+    def test_05e_delete_activity_by_other_docente_returns_403(self):
+        """DELETE /api/actividades lo bloquea para un docente que no dicta el curso."""
+        token_otro = self._login(*OTRO_DOCENTE)["access_token"]
+        status, _ = _peticion("DELETE", f"/api/actividades/{self.id_actividad}", token=token_otro)
+        self.assertEqual(status, 403)
 
     def test_06_docente_ajeno_no_puede_calificar_curso_de_otro(self):
         """RN-03: otro docente recibe 403 al crear una sección en un curso que no dicta."""

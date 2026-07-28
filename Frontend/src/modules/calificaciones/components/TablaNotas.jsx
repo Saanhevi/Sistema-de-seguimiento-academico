@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listarEstudiantesDeGrado, listarNotas, actualizarNota } from "../services/calificacionService";
+import { listarEstudiantesDeGrado, listarNotas, actualizarNota, registrarNota } from "../services/calificacionService";
 import { claseBadge, formatearNota, promedioSimple } from "../utils/notas";
 import CargaMasivaModal from "./CargaMasivaModal";
 import ImportarExcelModal from "./ImportarExcelModal";
@@ -110,13 +110,21 @@ export default function TablaNotas({ seccionActiva, idGrado, anio, periodoAbiert
       setErrorCelda("Escribe una calificación entre 0.00 y 5.00");
       return;
     }
+    const existeNota = Boolean(notas[claveNota(idActividad, idEstudiante)]);
     try {
-      const nota = await actualizarNota({
-        id_actividad: idActividad,
-        id_estudiante: idEstudiante,
-        calificacion,
-        comentario: borrador.comentario.trim() || null
-      });
+      const nota = existeNota
+        ? await actualizarNota({
+            id_actividad: idActividad,
+            id_estudiante: idEstudiante,
+            calificacion,
+            comentario: borrador.comentario.trim() || null
+          })
+        : await registrarNota({
+            id_actividad: idActividad,
+            id_estudiante: idEstudiante,
+            calificacion,
+            comentario: borrador.comentario.trim() || null
+          });
       setNotas((previas) => ({ ...previas, [claveNota(idActividad, idEstudiante)]: nota }));
       setEditando(null);
       setErrorCelda("");
