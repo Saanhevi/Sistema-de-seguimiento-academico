@@ -7,12 +7,14 @@ import {
   listarMisCursosEstudiante,
   listarNotas
 } from "../../../calificaciones/services/calificacionService";
+import { usePromedios } from '../../../calificaciones/hooks/usePromedios';
+import CardPromedio from '../../../calificaciones/components/CardPromedio';
 
 /**
  * Acordeón de un curso del estudiante. Solo consulta secciones, actividades y notas
  * cuando el estudiante lo expande, para no disparar todas las llamadas de golpe.
  */
-function CursoAcordeon({ curso }) {
+function CursoAcordeon({ curso, user }) { 
   const docente = nombreDocente(curso);
   const [abierto, setAbierto] = useState(false);
   const [seccionActiva, setSeccionActiva] = useState(null);
@@ -20,6 +22,12 @@ function CursoAcordeon({ curso }) {
   const [notaPorActividad, setNotaPorActividad] = useState({});
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+
+  const { 
+    promedioEstudiante, 
+    promedioGrupal, 
+    cargando: cargandoPromedios 
+  } = usePromedios(curso.id_curso, seccionActiva?.id_seccion, user);
 
   useEffect(() => {
     if (!seccionActiva) return undefined;
@@ -30,7 +38,6 @@ function CursoAcordeon({ curso }) {
       .then(async (lista) => {
         if (!vigente) return;
         setActividades(lista);
-        // El backend ya filtra la nota del estudiante autenticado (RN-04).
         const respuestas = await Promise.all(lista.map((act) => listarNotas(act.id_actividad)));
         if (!vigente) return;
         const mapa = {};
@@ -82,6 +89,22 @@ function CursoAcordeon({ curso }) {
 
       {abierto && (
         <div className="cal-seccion-body">
+          
+          {seccionActiva && (
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              {cargandoPromedios ? (
+                <p>Calculando promedios...</p>
+              ) : (
+                <>
+                  <CardPromedio titulo="Mi Promedio" valor={promedioEstudiante} />
+                  {user?.rol !== "Estudiante" && (
+                    <CardPromedio titulo="Promedio Grupal" valor={promedioGrupal} />
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {error && <p className="cal-error">{error}</p>}
           <SeccionPanel
             idCurso={curso.id_curso}
@@ -153,7 +176,7 @@ export default function EstudianteCalificaciones() {
         )}
 
         {cursos.map((curso) => (
-          <CursoAcordeon key={curso.id_curso} curso={curso} />
+          <CursoAcordeon key={curso.id_curso} curso={curso} user={user} />
         ))}
       </section>
     </main>
