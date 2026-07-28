@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { listarMisCursosEstudiante } from '../../../calificaciones/services/calificacionService';
+import { listarAlertas } from '../../../alertas/services/alertaService';
+import AlertasPanel from '../../../alertas/components/AlertasPanel';
 import { etiquetaCurso, nombreDocente } from '../../../calificaciones/utils/cursos';
 
 // PortalEstudiantil: inicio del estudiante.
@@ -17,8 +19,11 @@ export default function PortalEstudiantil() {
   const isHomeView = location.pathname === '/dashboard/estudiante';
 
   const [cursos, setCursos] = useState([]);
+  const [alertas, setAlertas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [cargandoAlertas, setCargandoAlertas] = useState(true);
   const [error, setError] = useState('');
+  const [errorAlertas, setErrorAlertas] = useState('');
 
   useEffect(() => {
     if (!isHomeView || !user?.id_usuario) return undefined;
@@ -36,6 +41,19 @@ export default function PortalEstudiantil() {
       })
       .finally(() => {
         if (vigente) setCargando(false);
+      });
+
+    listarAlertas()
+      .then((lista) => {
+        if (!vigente) return;
+        setAlertas(lista || []);
+        setErrorAlertas('');
+      })
+      .catch((err) => {
+        if (vigente) setErrorAlertas(err.detail || 'No se pudieron cargar tus alertas');
+      })
+      .finally(() => {
+        if (vigente) setCargandoAlertas(false);
       });
 
     return () => {
@@ -91,6 +109,19 @@ export default function PortalEstudiantil() {
             </div>
           );
         })}
+      </section>
+
+      <section className="cal-card">
+        <div className="cal-card-head">
+          <h3 className="cal-section-title">Mis alertas</h3>
+        </div>
+
+        <AlertasPanel
+          alertas={alertas}
+          loading={cargandoAlertas}
+          error={errorAlertas}
+          emptyMessage="No tienes alertas por el momento."
+        />
       </section>
     </main>
   );

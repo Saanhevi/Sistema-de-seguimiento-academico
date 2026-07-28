@@ -5,6 +5,8 @@ from app.repositories.curso import CursoRepository
 from app.models.historial_asistencia import HistorialAsistencia
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
+from app.models.dia_asistible import DiaAsistible
+from app.services.alerta import AlertaService
 
 class AsistenciaService:
     """Servicio temporal para el módulo de asistencia.
@@ -17,6 +19,7 @@ class AsistenciaService:
         self.session = session
         self.asistencia_repository = AsistenciaRepository(session)
         self.curso_repository = CursoRepository(session)
+        self.alerta_service = AlertaService(session)
         
     def lista_asistencia(self, id_curso, fecha):
         #Se verifica si hay un dia asistible para tal curso y fecha 
@@ -110,6 +113,13 @@ class AsistenciaService:
 
     def actualizar_asistencia(self, id_dia, lista_asistencia : list[AsistenciaRequest]):
         try:
+            # Antes de actualizar, contamos ausencias por estudiante
+            estudiantes_ids = [r.id_estudiante for r in lista_asistencia]
+            ausencias_antes = {}
+            for id_est in estudiantes_ids:
+                historial = self.asistencia_repository.listar_historial_estudiante(id_est)
+                ausencias_antes[id_est] = sum(1 for h in historial if h.estado == "Ausente")
+
             for registro in lista_asistencia:
                 filas = self.asistencia_repository.actualizar_registro_asistencia(
                     id_dia,
@@ -122,8 +132,28 @@ class AsistenciaService:
                         status_code=404,
                         detail=f"El estudiante {registro.id_estudiante} no pertenece a esta lista."
                     )
-                
+
             self.session.commit()
+
+            # Después de actualizar, verificar si alguna cuenta de ausencias cruzó el umbral (>3)
+            dia = self.session.get(DiaAsistible, id_dia)
+            id_curso = dia.id_curso if dia is not None else None
+
+            for id_est in estudiantes_ids:
+                historial = self.asistencia_repository.listar_historial_estudiante(id_est)
+                ausencias_despues = sum(1 for h in historial if h.estado == "Ausente")
+                if ausencias_despues >= 3:
+                    try:
+                        mensaje = f"Inasistencias registradas: {ausencias_despues}"
+                        self.alerta_service.refrescar_alerta(id_est, "Inasistencias", "Alto", mensaje, id_curso=id_curso)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        self.alerta_service.refrescar_alerta(id_est, "Inasistencias", None, None, id_curso=id_curso)
+                    except Exception:
+                        pass
+
             return {"mensaje" : "Actualizacion correcta"}
             
         except SQLAlchemyError:
