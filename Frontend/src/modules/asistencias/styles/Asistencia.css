@@ -90,15 +90,14 @@
 }
 
 .badge{
-
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding:4px 10px;
-
     border-radius:15px;
-
     color:white;
-
     font-size:13px;
-
+    font-weight: 600;
 }
 
 .presente{
@@ -113,9 +112,18 @@
 
 }
 
+.retardo,
 .tardanza{
 
-    background:#d97706;
+    background: var(--warn);
+    color: #ffffff;
+
+}
+
+.excusa{
+
+    background: var(--teal-brand);
+    color: #ffffff;
 
 }
 
