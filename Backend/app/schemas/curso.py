@@ -157,3 +157,5 @@ class EstudianteMatriculadoResponse(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     correo: Optional[str] = None
+    # HU22: null para los usuarios creados antes de que existiera la columna.
+    documento: Optional[str] = None

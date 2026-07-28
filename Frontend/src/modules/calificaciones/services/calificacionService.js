@@ -114,6 +114,68 @@ async function cargaMasiva(data) {
   }
 }
 
+/**
+ * HU22: sube un .xlsx y devuelve la vista previa (filas válidas + errores).
+ * No escribe nada: quien guarda es cargaMasiva() cuando el docente confirma.
+ */
+async function importarExcel(idActividad, archivo) {
+  const formData = new FormData();
+  formData.append("id_actividad", idActividad);
+  formData.append("archivo", archivo);
+
+  try {
+    // El Content-Type global de services/api.js es application/json y aquí no
+    // sirve. Axios detecta el FormData y pone el boundary por su cuenta, pero
+    // no puede adivinar que este POST no es JSON.
+    const response = await api.post("/api/notas/importar-excel", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || ERROR_CONEXION;
+  }
+}
+
+/**
+ * HU22: descarga la plantilla del curso como Blob.
+ *
+ * No se puede usar un <a href> normal: el endpoint exige Authorization Bearer y
+ * un enlace directo del navegador no pasa por el interceptor de axios, así que
+ * devolvería un 401 o un archivo con el JSON del error dentro.
+ */
+async function descargarPlantilla(idActividad) {
+  try {
+    const response = await api.get("/api/notas/plantilla-excel", {
+      params: { id_actividad: idActividad },
+      responseType: "blob"
+    });
+    return { blob: response.data, nombreArchivo: nombreDeContentDisposition(response.headers) };
+  } catch (error) {
+    // Con responseType blob, el cuerpo de un error también llega como Blob y
+    // `error.response.data.detail` sería undefined.
+    throw (await leerErrorBlob(error)) || ERROR_CONEXION;
+  }
+}
+
+/** Nombre de archivo del header Content-Disposition, con un respaldo razonable. */
+function nombreDeContentDisposition(headers) {
+  const cabecera = headers?.["content-disposition"] || "";
+  const coincidencia = cabecera.match(/filename="?([^"]+)"?/);
+  return coincidencia?.[1] || "notas.xlsx";
+}
+
+/** Traduce a {detail} un error cuyo cuerpo vino como Blob. */
+async function leerErrorBlob(error) {
+  const datos = error.response?.data;
+  if (!datos) return null;
+  if (typeof datos.text !== "function") return datos;
+  try {
+    return JSON.parse(await datos.text());
+  } catch {
+    return null;
+  }
+}
+
 async function listarMisMatriculas(idEstudiante) {
   try {
     const response = await api.get("/api/matriculas", { params: { id_estudiante: idEstudiante } });
@@ -174,6 +236,8 @@ export {
   listarNotas,
   registrarNota,
   cargaMasiva,
+  importarExcel,
+  descargarPlantilla,
   listarMisMatriculas,
   // Reexportada desde cursoService para no duplicar la llamada al mismo endpoint.
   listarEstudiantesDeGrado,

@@ -74,3 +74,50 @@ class PromedioEstudianteResponse(BaseModel):
 
     id_estudiante: int
     promedio: float
+
+
+# --- HU22: importación desde Excel ---
+# La previsualización no escribe nada (RN-q): estos esquemas describen un
+# reporte, no un cambio. La escritura sigue siendo NotaCargaMasivaRequest.
+
+
+class ImportacionFilaValida(BaseModel):
+    """Una fila del archivo que ya quedó resuelta a un estudiante del curso."""
+
+    # Número de fila tal como lo ve Excel (encabezado = 1, primer dato = 2).
+    fila: int
+    id_estudiante: int
+    calificacion: float
+    comentario: Optional[str] = None
+    # Solo para pintar la vista previa; el paso de confirmación los descarta.
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+
+
+class ImportacionErrorFila(BaseModel):
+    """Un problema ubicable: fila de Excel, columna, valor y qué hacer."""
+
+    fila: int
+    columna: str
+    valor: Optional[str] = None
+    mensaje: str
+
+
+class ImportacionEstudianteSinNota(BaseModel):
+    """RN-u: matriculado al que el archivo no menciona y que sigue sin nota."""
+
+    id_estudiante: int
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+
+
+class ImportacionNotasResponse(BaseModel):
+    id_actividad: int
+    # El nombre viaja para que el frontend pueda confirmar el destino en el
+    # propio botón de guardar (RN-w): el archivo no lleva id_actividad.
+    actividad: str
+    total_filas: int
+    filas_validas: list[ImportacionFilaValida]
+    filas_omitidas: int  # RN-l: sin calificación
+    errores: list[ImportacionErrorFila]
+    estudiantes_sin_nota: list[ImportacionEstudianteSinNota]

@@ -12,6 +12,15 @@ class UsuarioRepository:
             
         return resultado 
     
+    def buscar_por_documento(self, documento):
+        # HU22: el documento se guarda ya normalizado (RN-r), así que la búsqueda
+        # es una igualdad exacta. Con documento en None no se busca nada: la
+        # columna es nullable y NULL = NULL nunca es cierto en SQL.
+        if not documento:
+            return None
+        query = select(Usuario).where(Usuario.documento == documento)
+        return self.session.execute(query).scalars().first()
+
     def buscar_por_id(self, id_usuario):
         query = select(Usuario).where(Usuario.id_usuario == id_usuario) # Se busca por id_usuario
         resultado = self.session.execute(query).scalars().first()

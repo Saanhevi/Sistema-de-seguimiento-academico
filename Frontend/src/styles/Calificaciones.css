@@ -666,6 +666,84 @@
   margin: 0 0 10px;
 }
 
+/* Importar notas desde Excel (HU22) */
+
+/* La vista previa es una tabla, no un formulario: necesita más ancho que los
+   420px del modal normal. */
+.cal-import {
+  max-width: 720px;
+}
+
+.cal-import-acciones {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cal-import-destino {
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--ok-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+
+/* La lista de filas válidas puede traer 40 estudiantes: se desplaza dentro de
+   su caja en vez de estirar el modal. */
+.cal-import-lista {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.cal-import-errores,
+.cal-import-avisos {
+  margin-bottom: 16px;
+}
+
+.cal-import-errores ul,
+.cal-import-avisos ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cal-import-errores li {
+  background: var(--alert-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+
+.cal-import-avisos li {
+  background: var(--warn-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 6px 0 0;
+}
+
+.cal-import code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.cal-import .cal-modal-actions {
+  align-items: center;
+}
+
+/* Empuja los botones a la derecha y deja el conteo de filas fuera pegado a
+   ellos, que es donde el docente lo lee al decidir. */
+.cal-import .cal-modal-actions .cal-btn.secondary:first-child {
+  margin-right: auto;
+}
+
 /* Cabecera de los promedios de la materia (HU8/HU9): la tarjeta del grupal y el
    conteo de calificados en una sola fila, que baja a columna en pantallas angostas. */
 .cal-promedios-resumen {

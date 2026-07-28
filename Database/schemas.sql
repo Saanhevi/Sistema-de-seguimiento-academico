@@ -1,9 +1,15 @@
 CREATE TABLE IF NOT EXISTS Usuario (
     id_usuario INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nombres VARCHAR(100) NOT NULL, 
+    nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     correo VARCHAR(100) NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL, 
+    -- HU22: clave natural para emparejar filas de un Excel con estudiantes ya
+    -- registrados. VARCHAR y no INTEGER porque los documentos llevan ceros a la
+    -- izquierda y las cédulas de extranjería llevan letras. Nullable porque los
+    -- usuarios creados antes de esta columna no tienen documento; UNIQUE porque
+    -- si no, no sirve para emparejar (Postgres admite muchos NULL en un UNIQUE).
+    documento VARCHAR(20) UNIQUE,
+    password_hash TEXT NOT NULL,
     rol VARCHAR(20) NOT NULL CHECK (
         rol IN ('Administrador', 'Docente', 'Acudiente', 'Estudiante')
     )

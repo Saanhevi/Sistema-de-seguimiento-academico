@@ -272,6 +272,7 @@ class CursoService:
                 Usuario.nombres,
                 Usuario.apellidos,
                 Usuario.correo,
+                Usuario.documento,
             )
             .join(Estudiante, Estudiante.id_estudiante == Matricula.id_estudiante)
             .join(Usuario, Usuario.id_usuario == Estudiante.id_estudiante)
@@ -288,6 +289,9 @@ class CursoService:
                 "nombre": row.nombres,
                 "apellido": row.apellidos,
                 "correo": row.correo,
+                # HU22: llega null para los usuarios creados antes de la columna.
+                # Lo consume el buscador de HU12 ("Nombre o documento").
+                "documento": row.documento,
             }
             for row in rows
         ]

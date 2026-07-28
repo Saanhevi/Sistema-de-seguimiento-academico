@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from app.core.database import Base
 from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped , mapped_column, relationship
@@ -21,7 +21,12 @@ class Usuario(Base):
     apellidos : Mapped[str] = mapped_column(String(100))
     
     correo : Mapped[str] = mapped_column(String(100), unique=True)
-    
+
+    # HU22: nullable a propósito. Los usuarios creados antes de esta columna no
+    # tienen documento y no se les puede inventar uno; el emparejamiento de la
+    # importación degrada al correo en ese caso (RN-j).
+    documento : Mapped[Optional[str]] = mapped_column(String(20), unique=True, nullable=True)
+
     password_hash : Mapped[str] = mapped_column(Text)
     
     rol : Mapped[str] = mapped_column(String(20))
