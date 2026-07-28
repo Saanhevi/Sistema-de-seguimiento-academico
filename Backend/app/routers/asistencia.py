@@ -22,7 +22,7 @@ def obtener_lista_asistencias(
     id_curso : int = Query(..., description="ID del Curso"),
     fecha : date = Query(..., description="Fecha donde se toma asistencia")
 ):
-    return service.lista_asistencia(id_curso,fecha)
+    return service.lista_asistencia(id_curso, fecha, usuario)
 
 @router.put("/listas/{id_dia}", response_model=AsistenciaMensajeResponse)
 def guardar_asistencia(
@@ -31,7 +31,7 @@ def guardar_asistencia(
     service : AsistenciaService = Depends(get_asistencia_service),
     usuario = Depends(require_role("Docente")),
 ):
-    return service.actualizar_asistencia(id_dia, lista_asistencia)
+    return service.actualizar_asistencia(id_dia, lista_asistencia, usuario)
 
 @router.get("/mis-asistencias", response_model=list[AsistenciaEstudianteResponse])
 def consultar_mis_asistencias(
@@ -47,4 +47,4 @@ def consultar_historial_dias(
     service : AsistenciaService = Depends(get_asistencia_service),
     usuario = Depends(require_role("Docente")),
 ): 
-    return service.historial_dias_curso(id_curso)
+    return service.historial_dias_curso(id_curso, usuario)

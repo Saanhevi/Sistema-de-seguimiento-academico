@@ -1,12 +1,15 @@
 from pydantic import BaseModel 
 from datetime import date 
+from typing import Literal
+
+EstadoAsistencia = Literal["Presente", "Ausente", "Retardo", "Excusa"] 
 
 #Necesarios para mostrar la lista de asistencias
 class AsistenciaResponse(BaseModel):
     id_estudiante: int 
     nombres : str 
     apellidos : str 
-    estado : str 
+    estado : EstadoAsistencia 
     
 class AsistenciaListaResponse(BaseModel):
     id_dia: int 
@@ -19,13 +22,13 @@ class AsistenciaListaResponse(BaseModel):
 # Clase para guardar la asistencia de un estudiante
 class AsistenciaRequest(BaseModel):
     id_estudiante : int 
-    estado : str 
+    estado : EstadoAsistencia 
 
 # Clase para mostrar asistencias al estudiante
 class AsistenciaEstudianteResponse(BaseModel):
     materia : str 
     fecha : date 
-    estado : str 
+    estado : EstadoAsistencia 
 
 # Mensaje sobre la asistencia
 class AsistenciaMensajeResponse(BaseModel):

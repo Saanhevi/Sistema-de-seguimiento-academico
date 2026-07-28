@@ -103,6 +103,20 @@ class CursoService:
 
         return estudiantes
 
+    def _docente_puede_matricular_en_grado(self, id_docente: int, id_grado: int, anio: int) -> bool:
+        query = (
+            select(Curso.id_curso)
+            .join(PeriodoAcademico, Curso.id_periodo == PeriodoAcademico.id_periodo)
+            .where(
+                Curso.id_docente == id_docente,
+                Curso.id_grado == id_grado,
+                PeriodoAcademico.anio == anio,
+            )
+            .limit(1)
+        )
+
+        return self.session.execute(query).first() is not None
+
     def crear_grado(self, nombre: str) -> Grado:
         nombre_limpio = self._validar_nombre(nombre, "nombre del grado")
 
@@ -196,8 +210,22 @@ class CursoService:
         return curso
 
     def crear_matricula(self, id_estudiante: int, id_grado: int, anio: int, usuario_actual=None) -> Matricula:
-        if usuario_actual is not None and usuario_actual.rol != "Administrador":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los administradores pueden crear matrículas")
+        anio_valido = self._validar_anio(anio)
+
+        if usuario_actual is not None and usuario_actual.rol not in {"Administrador", "Docente"}:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para crear matrículas")
+
+        if usuario_actual is not None and usuario_actual.rol == "Docente":
+            autorizado = self._docente_puede_matricular_en_grado(
+                id_docente=usuario_actual.id_usuario,
+                id_grado=id_grado,
+                anio=anio_valido,
+            )
+            if not autorizado:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Solo puedes matricular estudiantes en grados y años donde tienes cursos asignados",
+                )
 
         estudiante = self.session.get(Estudiante, id_estudiante)
         if not estudiante:
@@ -211,11 +239,11 @@ class CursoService:
         if usuario_estudiante is None or getattr(usuario_estudiante, "rol", None) != "Estudiante":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El estudiante debe existir y tener rol Estudiante")
 
-        matriculas_existentes = self.matricula_repo.buscar_por_estudiante_y_anio(id_estudiante, anio)
+        matriculas_existentes = self.matricula_repo.buscar_por_estudiante_y_anio(id_estudiante, anio_valido)
         if matriculas_existentes:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El estudiante ya tiene una matrícula activa en este año")
 
-        matricula = Matricula(id_estudiante=id_estudiante, id_grado=id_grado, anio=anio)
+        matricula = Matricula(id_estudiante=id_estudiante, id_grado=id_grado, anio=anio_valido)
         return self.matricula_repo.crear(matricula)
 
     def listar_matriculas(self, id_grado=None, anio=None, id_estudiante=None, usuario_actual=None) -> list[Matricula]:
