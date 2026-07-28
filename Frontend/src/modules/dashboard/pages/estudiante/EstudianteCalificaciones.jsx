@@ -23,11 +23,14 @@ function CursoAcordeon({ curso, user }) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const { 
-    promedioEstudiante, 
-    promedioGrupal, 
-    cargando: cargandoPromedios 
-  } = usePromedios(curso.id_curso, seccionActiva?.id_seccion, user);
+  // El promedio es por materia y periodo del curso, no por sección: se consulta
+  // con los ids del propio curso (CursoResponse ya los trae).
+  const {
+    promedioEstudiante,
+    promedioGrupal,
+    cargando: cargandoPromedios,
+    error: errorPromedios
+  } = usePromedios(curso.id_materia, curso.id_periodo, user);
 
   useEffect(() => {
     if (!seccionActiva) return undefined;
@@ -90,20 +93,20 @@ function CursoAcordeon({ curso, user }) {
       {abierto && (
         <div className="cal-seccion-body">
           
-          {seccionActiva && (
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              {cargandoPromedios ? (
-                <p>Calculando promedios...</p>
-              ) : (
-                <>
-                  <CardPromedio titulo="Mi Promedio" valor={promedioEstudiante} />
-                  {user?.rol !== "Estudiante" && (
-                    <CardPromedio titulo="Promedio Grupal" valor={promedioGrupal} />
-                  )}
-                </>
-              )}
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+            {cargandoPromedios && <p className="cal-hint">Calculando promedios...</p>}
+            {!cargandoPromedios && errorPromedios && (
+              <p className="cal-error">{errorPromedios}</p>
+            )}
+            {!cargandoPromedios && !errorPromedios && (
+              <>
+                <CardPromedio titulo="Mi Promedio" valor={promedioEstudiante} />
+                {user?.rol !== "Estudiante" && (
+                  <CardPromedio titulo="Promedio Grupal" valor={promedioGrupal} />
+                )}
+              </>
+            )}
+          </div>
 
           {error && <p className="cal-error">{error}</p>}
           <SeccionPanel

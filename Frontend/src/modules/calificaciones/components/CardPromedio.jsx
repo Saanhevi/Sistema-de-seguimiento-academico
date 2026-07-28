@@ -1,6 +1,9 @@
-import React from 'react';
+import { formatearNota } from '../utils/notas';
 
 const CardPromedio = ({ titulo, valor }) => {
+  // null/undefined significan "todavía no hay notas"; los errores los muestra la pantalla.
+  const hayValor = valor !== null && valor !== undefined && !Number.isNaN(Number(valor));
+
   return (
     <div style={{ 
       border: '1px solid #e2e8f0', 
@@ -14,8 +17,8 @@ const CardPromedio = ({ titulo, valor }) => {
         {titulo}
       </h3>
       <p style={{ margin: '0', fontSize: '28px', fontWeight: 'bold', color: '#0f172a' }}>
-        {/* Aquí está la magia de la corrección H13: validamos el null */}
-        {valor !== null ? valor : "Sin datos"}
+        {/* Corrección H13: mismo formato de dos decimales que la tabla de notas */}
+        {hayValor ? formatearNota(valor) : "Sin datos"}
       </p>
     </div>
   );
