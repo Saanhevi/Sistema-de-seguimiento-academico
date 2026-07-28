@@ -1,12 +1,16 @@
+from contextlib import contextmanager
 from datetime import date
 
-from app.core.database import SessionLocal
+from sqlalchemy.orm import Session
+
+from app.core.database import engine
 from app.core.security import controlador_contrasena
 from app.models.usuario import Usuario
 from app.models.docente import Docente
 from app.models.estudiante import Estudiante
 from app.models.grado import Grado
 from app.models.materia import Materia
+from app.models.curso import Curso
 from app.models.periodo_academico import PeriodoAcademico
 from app.models.seccion_porcentaje import SeccionPorcentaje
 from app.models.actividad_evaluativa import ActividadEvaluativa
@@ -14,9 +18,31 @@ from app.models.dia_asistible import DiaAsistible
 from app.models.historial_asistencia import HistorialAsistencia
 from app.models.alerta import Alerta
 
+from app.schemas.asistencia import AsistenciaRequest
 from app.services.calificacion import CalificacionService
 from app.services.asistencia import AsistenciaService
 from app.repositories.alerta import AlertaRepository
+
+
+@contextmanager
+def sesion_de_prueba():
+    """Sesión aislada en una transacción externa que siempre se revierte.
+
+    Los servicios llaman a session.commit() internamente; con
+    join_transaction_mode="create_savepoint" esos commit se resuelven contra un
+    savepoint en vez de la transacción externa. Así el test ve sus propios datos,
+    pero al salir no queda nada en la base y se puede repetir las veces que sea
+    sobre una base limpia (el correo de usuario es UNIQUE).
+    """
+    conexion = engine.connect()
+    transaccion = conexion.begin()
+    session = Session(bind=conexion, join_transaction_mode="create_savepoint")
+    try:
+        yield session
+    finally:
+        session.close()
+        transaccion.rollback()
+        conexion.close()
 
 
 def crear_usuario(session, correo, nombres, apellidos, rol):
@@ -32,9 +58,31 @@ def crear_usuario(session, correo, nombres, apellidos, rol):
     return usuario
 
 
+def crear_curso(session, docente, sufijo):
+    """Crea grado, materia, periodo abierto y el curso que los une.
+
+    Ojo con los anchos del esquema: grado.nombre es VARCHAR(10) y
+    periodoacademico.nombre VARCHAR(20), por eso el sufijo solo se usa donde cabe.
+    """
+    grado = Grado(nombre="10A")
+    materia = Materia(nombre=f"Materia {sufijo}")
+    periodo = PeriodoAcademico(nombre=f"2026-{sufijo}"[:20], anio=2026, estado="Abierto")
+    session.add_all([grado, materia, periodo])
+    session.flush()
+
+    curso = Curso(
+        id_docente=docente.id_docente,
+        id_grado=grado.id_grado,
+        id_materia=materia.id_materia,
+        id_periodo=periodo.id_periodo,
+    )
+    session.add(curso)
+    session.flush()
+    return curso
+
+
 def test_alertas_por_promedio():
-    session = SessionLocal()
-    try:
+    with sesion_de_prueba() as session:
         # Crear docente, estudiante y entidades mínimas
         docente_u = crear_usuario(session, "doc@test.com", "Doc", "T", "Docente")
         docente = Docente(id_docente=docente_u.id_usuario, estado="Activo")
@@ -43,22 +91,9 @@ def test_alertas_por_promedio():
         estudiante_u = crear_usuario(session, "est@test.com", "Est", "T", "Estudiante")
         estudiante = Estudiante(id_estudiante=estudiante_u.id_usuario, estado="Activo")
         session.add(estudiante)
-
-        grado = Grado(nombre="1A")
-        session.add(grado)
-        materia = Materia(nombre="Mat")
-        session.add(materia)
-        periodo = PeriodoAcademico(nombre="2026-1", anio=2026, estado="Abierto")
-        session.add(periodo)
         session.flush()
 
-        curso = session.execute(
-            "SELECT * FROM curso WHERE 1=0"
-        )  # no-op to keep style; create curso via ORM below
-        from app.models.curso import Curso
-        curso = Curso(id_docente=docente.id_docente, id_grado=grado.id_grado, id_materia=materia.id_materia, id_periodo=periodo.id_periodo)
-        session.add(curso)
-        session.flush()
+        curso = crear_curso(session, docente, "promedio")
 
         seccion = SeccionPorcentaje(nombre_seccion="Quizzes", porcentaje=100.0, id_curso=curso.id_curso)
         session.add(seccion)
@@ -88,14 +123,9 @@ def test_alertas_por_promedio():
         assert alerta2 is not None
         assert alerta2.nivel == "Alto"
 
-    finally:
-        session.rollback()
-        session.close()
-
 
 def test_alertas_solo_del_periodo_abierto():
-    session = SessionLocal()
-    try:
+    with sesion_de_prueba() as session:
         docente_u = crear_usuario(session, "doc_unique@test.com", "Doc2", "T", "Docente")
         docente = Docente(id_docente=docente_u.id_usuario, estado="Activo")
         session.add(docente)
@@ -114,7 +144,6 @@ def test_alertas_solo_del_periodo_abierto():
         session.add_all([periodo_abierto, periodo_cerrado])
         session.flush()
 
-        from app.models.curso import Curso
         curso_abierto = Curso(id_docente=docente.id_docente, id_grado=grado.id_grado, id_materia=materia.id_materia, id_periodo=periodo_abierto.id_periodo)
         curso_cerrado = Curso(id_docente=docente.id_docente, id_grado=grado.id_grado, id_materia=materia.id_materia, id_periodo=periodo_cerrado.id_periodo)
         session.add_all([curso_abierto, curso_cerrado])
@@ -145,43 +174,43 @@ def test_alertas_solo_del_periodo_abierto():
         alertas = repo.listar_por_estudiante(estudiante.id_estudiante)
 
         assert [alerta.id_alerta for alerta in alertas] == [alerta_abierta.id_alerta]
-    finally:
-        session.rollback()
-        session.close()
 
 
 def test_alertas_por_inasistencias():
-    session = SessionLocal()
-    try:
+    with sesion_de_prueba() as session:
+        docente_u = crear_usuario(session, "doc_inasistencias@test.com", "Doc4", "T", "Docente")
+        docente = Docente(id_docente=docente_u.id_usuario, estado="Activo")
+        session.add(docente)
+
         estudiante_u = crear_usuario(session, "est2@test.com", "Est2", "T", "Estudiante")
         estudiante = Estudiante(id_estudiante=estudiante_u.id_usuario, estado="Activo")
         session.add(estudiante)
+        session.flush()
 
-        # Crear dia asistible y 2 ausencias previas
-        from app.models.dia_asistible import DiaAsistible
-        dia1 = DiaAsistible(id_curso=1, fecha=date(2026,7,1))
-        dia2 = DiaAsistible(id_curso=1, fecha=date(2026,7,2))
-        dia3 = DiaAsistible(id_curso=1, fecha=date(2026,7,3))
+        curso = crear_curso(session, docente, "inasistencias")
+
+        # Crear dias asistibles y 2 ausencias previas
+        dia1 = DiaAsistible(id_curso=curso.id_curso, fecha=date(2026,7,1))
+        dia2 = DiaAsistible(id_curso=curso.id_curso, fecha=date(2026,7,2))
+        dia3 = DiaAsistible(id_curso=curso.id_curso, fecha=date(2026,7,3))
         session.add_all([dia1, dia2, dia3])
         session.flush()
 
+        # El dia3 necesita su fila de historial: actualizar_asistencia hace UPDATE,
+        # y sin fila previa no afecta ninguna y responde 404.
         h1 = HistorialAsistencia(id_dia=dia1.id_dia, id_estudiante=estudiante.id_estudiante, estado="Ausente")
         h2 = HistorialAsistencia(id_dia=dia2.id_dia, id_estudiante=estudiante.id_estudiante, estado="Ausente")
-        session.add_all([h1, h2])
+        h3 = HistorialAsistencia(id_dia=dia3.id_dia, id_estudiante=estudiante.id_estudiante, estado="Presente")
+        session.add_all([h1, h2, h3])
         session.flush()
         session.commit()
 
         asistencia_service = AsistenciaService(session)
 
         # Ahora actualizamos el tercer día a Ausente mediante el servicio para disparar la alerta
-        from app.schemas.asistencia import AsistenciaRequest
         req = [AsistenciaRequest(id_estudiante=estudiante.id_estudiante, estado="Ausente")]
-        asistencia_service.actualizar_asistencia(dia3.id_dia, req)
+        asistencia_service.actualizar_asistencia(dia3.id_dia, req, docente_u)
 
         alerta = session.query(Alerta).filter(Alerta.id_estudiante == estudiante.id_estudiante).order_by(Alerta.id_alerta.desc()).first()
         assert alerta is not None
         assert alerta.nivel == "Alto"
-
-    finally:
-        session.rollback()
-        session.close()
