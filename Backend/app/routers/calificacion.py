@@ -8,6 +8,7 @@ from app.schemas.calificacion import (
     NotaCargaMasivaRequest,
     NotaCreate,
     NotaResponse,
+    PromedioEstudianteResponse,
     SeccionPorcentajeCreate,
     SeccionPorcentajeResponse,
 )
@@ -123,27 +124,51 @@ def obtener_promedio_estudiante_materia(
             detail="No tienes permiso para consultar el promedio de otro estudiante."
         )
 
-   
-    promedio = service.obtener_promedio_estudiante_materia(id_estudiante, id_materia, id_periodo)
-    
+
+    # El servicio acota al Docente a sus propios cursos (RN-03).
+    promedio = service.obtener_promedio_estudiante_materia(id_estudiante, id_materia, id_periodo, usuario)
+
     return {
         "id_estudiante": id_estudiante,
         "id_materia": id_materia,
-        "id_periodo": id_periodo, 
+        "id_periodo": id_periodo,
         "promedio": promedio
     }
-@router.get("/materia/{id_materia}/promedio-grupal", summary="Obtener promedio grupal de una materia")
+
+
+@router.get(
+    "/materia/{id_materia}/promedios-estudiantes",
+    response_model=list[PromedioEstudianteResponse],
+    summary="Promedio de cada estudiante en una materia (HU8)",
+)
+def listar_promedios_estudiantes_materia(
+    id_materia: int = Path(..., gt=0, le=ID_MAXIMO),
+    id_periodo: int = Query(..., gt=0, le=ID_MAXIMO),
+    service: CalificacionService = Depends(get_calificacion_service),
+    usuario=Depends(require_role("Administrador", "Docente")),
+):
+    promedios = service.obtener_promedios_por_estudiante_materia(id_materia, usuario, id_periodo)
+
+    # Orden estable por id: la tabla del docente se cruza con la lista de estudiantes
+    # del grado, que ya viene ordenada por el backend.
+    return [
+        PromedioEstudianteResponse(id_estudiante=id_estudiante, promedio=promedio)
+        for id_estudiante, promedio in sorted(promedios.items())
+    ]
+
+
+@router.get("/materia/{id_materia}/promedio-grupal", summary="Obtener promedio grupal de una materia (HU9)")
 def obtener_promedio_grupal_materia(
-    id_materia: int,
-    id_periodo: int = Query(..., gt=0, le=ID_MAXIMO), 
+    id_materia: int = Path(..., gt=0, le=ID_MAXIMO),
+    id_periodo: int = Query(..., gt=0, le=ID_MAXIMO),
     service: CalificacionService = Depends(get_calificacion_service),
     usuario = Depends(require_role("Administrador", "Docente")),
 ):
-   
+
     promedio = service.obtener_promedio_grupal_materia(id_materia, usuario, id_periodo)
-    
+
     return {
-        "id_materia": id_materia, 
+        "id_materia": id_materia,
         "id_periodo": id_periodo,
         "promedio_grupal": promedio
     }

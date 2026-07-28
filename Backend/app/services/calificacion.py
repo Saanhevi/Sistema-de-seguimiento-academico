@@ -324,12 +324,47 @@ class CalificacionService:
             id_docente=id_docente_filtro,
         )
    
-    def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int, id_periodo: int) -> float | None:
-        return self.nota_repo.obtener_promedio_estudiante_materia(id_estudiante, id_materia, id_periodo)
+    def _ambito_promedios(self, usuario: Usuario) -> int | None:
+        """Id de docente por el que acotar los promedios agregados, o None si no aplica.
+
+        Deniega por defecto. La versión anterior resolvía esto con
+        `usuario.id_usuario if rol == "Docente" else None`, así que cualquier rol que
+        no fuera exactamente "Docente" obtenía None, es decir, alcance institucional:
+        estaba a salvo solo porque el router restringía los roles.
+        """
+        if usuario.rol == "Administrador":
+            return None
+        if usuario.rol == "Docente":
+            return usuario.id_usuario  # RN-03: solo los cursos que dicta
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para consultar los promedios de esta materia",
+        )
+
+    def obtener_promedio_estudiante_materia(
+        self, id_estudiante: int, id_materia: int, id_periodo: int, usuario: Usuario
+    ) -> float | None:
+        # RN-03: a un Docente se le acota a sus propios cursos. Sin esto podía leer el
+        # promedio de cualquier estudiante en materias que no dicta; que el estudiante
+        # solo consulte lo suyo (RN-04) lo valida el router.
+        id_docente_filtro = usuario.id_usuario if usuario.rol == "Docente" else None
+        return self.nota_repo.obtener_promedio_estudiante_materia(
+            id_estudiante, id_materia, id_periodo, id_docente=id_docente_filtro
+        )
+
+    def obtener_promedios_por_estudiante_materia(
+        self, id_materia: int, usuario: Usuario, id_periodo: int
+    ) -> dict[int, float]:
+        # HU8: el docente ve el promedio de cada estudiante de la materia.
+        return self.nota_repo.obtener_promedios_por_estudiante_materia(
+            id_materia, self._ambito_promedios(usuario), id_periodo
+        )
 
     def obtener_promedio_grupal_materia(self, id_materia: int, usuario: Usuario, id_periodo: int) -> float | None:
-        id_docente_filtro = usuario.id_usuario if usuario.rol == "Docente" else None
-        return self.nota_repo.obtener_promedio_grupal_materia(id_materia, id_docente_filtro, id_periodo)
+        # HU9: sale de los mismos promedios individuales que devuelve HU8.
+        return self.nota_repo.obtener_promedio_grupal_materia(
+            id_materia, self._ambito_promedios(usuario), id_periodo
+        )
     
 
     # --- Eliminaciones (HU16) ---

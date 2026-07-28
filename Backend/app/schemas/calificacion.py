@@ -63,3 +63,14 @@ class NotaCargaMasivaItem(BaseModel):
 class NotaCargaMasivaRequest(BaseModel):
     id_actividad: int = Field(gt=0, le=ID_MAXIMO)
     notas: list[NotaCargaMasivaItem]
+
+
+class PromedioEstudianteResponse(BaseModel):
+    """Una fila de HU8: el promedio ponderado de un estudiante en una materia.
+
+    Solo lleva el id; el nombre lo resuelve quien ya tiene la lista de estudiantes
+    del grado, para no repetir ese join en cada consulta de promedios.
+    """
+
+    id_estudiante: int
+    promedio: float

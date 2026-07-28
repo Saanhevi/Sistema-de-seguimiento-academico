@@ -304,5 +304,70 @@ class ListarNotasRolTests(unittest.TestCase):
         )
 
 
+class AmbitoPromediosTests(unittest.TestCase):
+    """RN-03 en los promedios de materia (HU8 y HU9)."""
+
+    def setUp(self):
+        self.service = CalificacionService(Mock())
+        self.service.nota_repo = Mock()
+
+    def test_administrador_no_se_acota_a_ningun_docente(self):
+        self.service.obtener_promedios_por_estudiante_materia(9, Usuario(id_usuario=1, rol="Administrador"), 5)
+
+        self.service.nota_repo.obtener_promedios_por_estudiante_materia.assert_called_once_with(9, None, 5)
+
+    def test_docente_se_acota_a_sus_propios_cursos(self):
+        self.service.obtener_promedios_por_estudiante_materia(9, Usuario(id_usuario=3, rol="Docente"), 5)
+
+        self.service.nota_repo.obtener_promedios_por_estudiante_materia.assert_called_once_with(9, 3, 5)
+
+    def test_grupal_usa_el_mismo_ambito(self):
+        self.service.obtener_promedio_grupal_materia(9, Usuario(id_usuario=3, rol="Docente"), 5)
+
+        self.service.nota_repo.obtener_promedio_grupal_materia.assert_called_once_with(9, 3, 5)
+
+    def test_otros_roles_reciben_403_en_vez_de_alcance_institucional(self):
+        # El guard anterior era `id_usuario if rol == "Docente" else None`: cualquier
+        # rol distinto de Docente caía en None, es decir, todos los cursos del colegio.
+        for rol in ("Estudiante", "Acudiente", ""):
+            with self.subTest(rol=rol):
+                with self.assertRaises(HTTPException) as exc:
+                    self.service.obtener_promedios_por_estudiante_materia(9, Usuario(id_usuario=8, rol=rol), 5)
+
+                self.assertEqual(exc.exception.status_code, 403)
+                self.service.nota_repo.obtener_promedios_por_estudiante_materia.assert_not_called()
+
+
+class PromedioEstudianteAmbitoTests(unittest.TestCase):
+    """RN-03 en el promedio individual: un Docente no puede leer materias ajenas."""
+
+    def setUp(self):
+        self.service = CalificacionService(Mock())
+        self.service.nota_repo = Mock()
+
+    def test_docente_queda_acotado_a_sus_cursos(self):
+        self.service.obtener_promedio_estudiante_materia(42, 9, 5, Usuario(id_usuario=3, rol="Docente"))
+
+        self.service.nota_repo.obtener_promedio_estudiante_materia.assert_called_once_with(
+            42, 9, 5, id_docente=3
+        )
+
+    def test_estudiante_no_se_acota_por_docente(self):
+        # A quién puede consultar el estudiante lo valida el router (RN-04); aquí solo
+        # importa que no se le aplique un filtro de docente que borraría su propio dato.
+        self.service.obtener_promedio_estudiante_materia(42, 9, 5, Usuario(id_usuario=42, rol="Estudiante"))
+
+        self.service.nota_repo.obtener_promedio_estudiante_materia.assert_called_once_with(
+            42, 9, 5, id_docente=None
+        )
+
+    def test_administrador_no_se_acota_por_docente(self):
+        self.service.obtener_promedio_estudiante_materia(42, 9, 5, Usuario(id_usuario=1, rol="Administrador"))
+
+        self.service.nota_repo.obtener_promedio_estudiante_materia.assert_called_once_with(
+            42, 9, 5, id_docente=None
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

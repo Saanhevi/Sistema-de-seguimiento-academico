@@ -63,18 +63,18 @@ EXAMEN, TALLERES = 1, 2
 
 
 class PromedioEstudianteTests(unittest.TestCase):
-    """Filas de la consulta: (calificacion, id_seccion, porcentaje)."""
+    """Filas de la consulta: (id_estudiante, calificacion, id_seccion, porcentaje)."""
 
     def test_caso_documentado_h10(self):
         # Examen (60%) = 2.0 y Talleres (40%) = cuatro 5.0.
         # Ponderado: (2.0*60 + 5.0*40) / 100 = 3.2
         # La media aritmética que devolvía el código anterior daba 4.4.
         filas = [
-            (2.0, EXAMEN, 60),
-            (5.0, TALLERES, 40),
-            (5.0, TALLERES, 40),
-            (5.0, TALLERES, 40),
-            (5.0, TALLERES, 40),
+            (1, 2.0, EXAMEN, 60),
+            (1, 5.0, TALLERES, 40),
+            (1, 5.0, TALLERES, 40),
+            (1, 5.0, TALLERES, 40),
+            (1, 5.0, TALLERES, 40),
         ]
         repo, _ = _repo(filas)
 
@@ -86,7 +86,7 @@ class PromedioEstudianteTests(unittest.TestCase):
     def test_el_numero_de_actividades_no_altera_el_peso_de_la_seccion(self):
         # Misma nota por sección que el caso anterior, pero con una sola actividad
         # en Talleres: el peso lo pone el porcentaje, no cuántas notas hay.
-        filas = [(2.0, EXAMEN, 60), (5.0, TALLERES, 40)]
+        filas = [(1, 2.0, EXAMEN, 60), (1, 5.0, TALLERES, 40)]
         repo, _ = _repo(filas)
 
         self.assertEqual(repo.obtener_promedio_estudiante_materia(1, 1, 1), 3.2)
@@ -94,7 +94,7 @@ class PromedioEstudianteTests(unittest.TestCase):
     def test_actividades_de_una_seccion_se_promedian_entre_si(self):
         # Talleres (40%) tiene 4.0 y 2.0 -> 3.0 antes de ponderar.
         # (5.0*60 + 3.0*40) / 100 = 4.2
-        filas = [(5.0, EXAMEN, 60), (4.0, TALLERES, 40), (2.0, TALLERES, 40)]
+        filas = [(1, 5.0, EXAMEN, 60), (1, 4.0, TALLERES, 40), (1, 2.0, TALLERES, 40)]
         repo, _ = _repo(filas)
 
         self.assertEqual(repo.obtener_promedio_estudiante_materia(1, 1, 1), 4.2)
@@ -117,9 +117,65 @@ class PromedioEstudianteTests(unittest.TestCase):
         indicar que el corte está incompleto. Si se decide dividir sobre el peso
         total del curso (100%), este test debe cambiar a 2.0.
         """
-        repo, _ = _repo([(5.0, TALLERES, 40)])
+        repo, _ = _repo([(1, 5.0, TALLERES, 40)])
 
         self.assertEqual(repo.obtener_promedio_estudiante_materia(1, 1, 1), 5.0)
+
+    def test_docente_acota_la_consulta_a_sus_cursos(self):
+        # RN-03: HU8 hace que el docente lea promedios ajenos, así que el filtro
+        # por curso propio tiene que aplicarse también en la consulta individual.
+        repo, sesion = _repo([(1, 5.0, EXAMEN, 60)])
+
+        repo.obtener_promedio_estudiante_materia(1, 1, 1, id_docente=7)
+
+        # base (materia + periodo) + estudiante + docente
+        self.assertEqual(sesion.filtros_aplicados, 3)
+
+    def test_sin_docente_no_agrega_el_filtro_de_curso(self):
+        repo, sesion = _repo([(1, 5.0, EXAMEN, 60)])
+
+        repo.obtener_promedio_estudiante_materia(1, 1, 1)
+
+        self.assertEqual(sesion.filtros_aplicados, 2)
+
+
+class PromediosPorEstudianteTests(unittest.TestCase):
+    """HU8 desde la vista del docente: el promedio de cada estudiante de la materia."""
+
+    def test_devuelve_un_promedio_ponderado_por_estudiante(self):
+        filas = [
+            (1, 2.0, EXAMEN, 60),
+            (1, 5.0, TALLERES, 40),
+            (2, 5.0, EXAMEN, 60),
+            (2, 5.0, TALLERES, 40),
+        ]
+        repo, _ = _repo(filas)
+
+        promedios = repo.obtener_promedios_por_estudiante_materia(1, None, 1)
+
+        self.assertEqual(promedios, {1: 3.2, 2: 5.0})
+
+    def test_sin_notas_devuelve_diccionario_vacio(self):
+        repo, _ = _repo([])
+
+        self.assertEqual(repo.obtener_promedios_por_estudiante_materia(1, None, 1), {})
+
+    def test_el_grupal_es_la_media_de_lo_que_ve_el_docente(self):
+        # HU8 y HU9 salen del mismo cálculo: sumar la columna de promedios y dividir
+        # tiene que dar exactamente el promedio grupal que muestra la pantalla.
+        filas = [
+            (1, 2.0, EXAMEN, 60),
+            (1, 5.0, TALLERES, 40),
+            (2, 5.0, EXAMEN, 60),
+            (2, 5.0, TALLERES, 40),
+        ]
+        repo, _ = _repo(filas)
+        promedios = repo.obtener_promedios_por_estudiante_materia(1, None, 1)
+
+        repo_grupal, _ = _repo(filas)
+        grupal = repo_grupal.obtener_promedio_grupal_materia(1, None, 1)
+
+        self.assertEqual(grupal, round(sum(promedios.values()) / len(promedios), 2))
 
 
 class PromedioGrupalTests(unittest.TestCase):

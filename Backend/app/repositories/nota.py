@@ -1,3 +1,4 @@
+from collections import defaultdict
 from sqlalchemy import delete, select, func
 from app.models.nota import Nota
 from app.models.actividad_evaluativa import ActividadEvaluativa
@@ -45,133 +46,129 @@ class NotaRepository:
             Nota.id_estudiante == id_estudiante,
         )
         return self.session.execute(query).scalars().first() 
-    def obtener_promedio_estudiante_materia(self, id_estudiante: int, id_materia: int, id_periodo: int) -> Optional[float]:
-        from app.models.actividad_evaluativa import ActividadEvaluativa
-        from app.models.seccion_porcentaje import SeccionPorcentaje
-        from app.models.curso import Curso
-        from collections import defaultdict
+    def _consultar_filas_materia(
+        self,
+        id_materia: int,
+        id_periodo: int,
+        id_estudiante: int | None = None,
+        id_docente: int | None = None,
+    ):
+        """
+        Filas (id_estudiante, calificacion, id_seccion, porcentaje) de una materia.
 
-        # 1. Consulta: Traer la calificación, el ID de la sección y su porcentaje
-        # CORRECCIÓN H10: Agregamos filtro explícito de id_periodo
-        resultados = (
-            self.session.query(
-                Nota.calificacion,
-                SeccionPorcentaje.id_seccion,
-                SeccionPorcentaje.porcentaje
-            )
-            .join(ActividadEvaluativa, Nota.id_actividad == ActividadEvaluativa.id_actividad)
-            .join(SeccionPorcentaje, ActividadEvaluativa.id_seccion == SeccionPorcentaje.id_seccion)
-            .join(Curso, SeccionPorcentaje.id_curso == Curso.id_curso)
-            .filter(
-                Nota.id_estudiante == id_estudiante,
-                Curso.id_materia == id_materia,
-                Curso.id_periodo == id_periodo
-            )
-            .all()
-        )
-
-        if not resultados:
-            return None
-
-        # 2. CORRECCIÓN H10: Lógica matemática para promedio ponderado
-        # Estructura para agrupar: {id_seccion: {'notas': [], 'porcentaje': float}}
-        datos_secciones = defaultdict(lambda: {'notas': [], 'porcentaje': 0.0})
-
-        for calif, id_sec, porc in resultados:
-            if calif is not None:
-                datos_secciones[id_sec]['notas'].append(float(calif))
-                datos_secciones[id_sec]['porcentaje'] = float(porc)
-
-        suma_ponderada = 0.0
-        suma_porcentajes = 0.0
-
-        # 3. Calcular el promedio ponderado exacto
-        for id_sec, info in datos_secciones.items():
-            if info['notas']:
-                # Primero se promedian las actividades dentro de un mismo corte/sección
-                nota_seccion = sum(info['notas']) / len(info['notas'])
-                porcentaje = info['porcentaje']
-                
-                suma_ponderada += nota_seccion * porcentaje
-                suma_porcentajes += porcentaje
-
-        # 4. Fórmula Final
-        if suma_porcentajes > 0:
-            promedio_final = suma_ponderada / suma_porcentajes
-            return round(promedio_final, 2)
-        
-        return None
-    def obtener_promedio_grupal_materia(self, id_materia: int, id_docente: int | None, id_periodo: int) -> Optional[float]:
-        from app.models.actividad_evaluativa import ActividadEvaluativa
-        from app.models.seccion_porcentaje import SeccionPorcentaje
-        from app.models.curso import Curso
-        from collections import defaultdict
-
-        # 1. Consulta base: traemos también id_estudiante, id_seccion y porcentaje
-        # CORRECCIÓN H10: Agregamos filtro explícito de id_periodo
+        El filtro por id_periodo es lo que evita mezclar periodos y años distintos en
+        el mismo promedio (H10). El de id_docente aplica RN-03 cuando quien consulta
+        es un Docente; para un Administrador llega en None y no se acota.
+        """
         query = (
             self.session.query(
                 Nota.id_estudiante,
                 Nota.calificacion,
                 SeccionPorcentaje.id_seccion,
-                SeccionPorcentaje.porcentaje
+                SeccionPorcentaje.porcentaje,
             )
             .join(ActividadEvaluativa, Nota.id_actividad == ActividadEvaluativa.id_actividad)
             .join(SeccionPorcentaje, ActividadEvaluativa.id_seccion == SeccionPorcentaje.id_seccion)
             .join(Curso, SeccionPorcentaje.id_curso == Curso.id_curso)
             .filter(
                 Curso.id_materia == id_materia,
-                Curso.id_periodo == id_periodo
+                Curso.id_periodo == id_periodo,
             )
         )
 
-        # 2. CORRECCIÓN H7: Filtro opcional de docente (ignorado si es Administrador)
+        if id_estudiante is not None:
+            query = query.filter(Nota.id_estudiante == id_estudiante)
         if id_docente is not None:
             query = query.filter(Curso.id_docente == id_docente)
 
-        resultados = query.all()
+        return query.all()
 
-        if not resultados:
+    @staticmethod
+    def _promedio_ponderado(filas) -> Optional[float]:
+        """
+        Σ(nota_seccion * porcentaje) / Σ(porcentaje) sobre tuplas
+        (calificacion, id_seccion, porcentaje).
+
+        Las actividades de una misma sección se promedian entre sí antes de ponderar,
+        para que tener 10 talleres no pese más que tener 2 (H10). Devuelve None si no
+        hay nada que promediar: 0.0 es una calificación válida y no puede usarse como
+        marcador de «sin datos» (H13).
+
+        Ojo: el promedio se normaliza sobre las secciones que ya tienen nota, así que
+        un corte incompleto se reporta como si fuera el definitivo de la materia.
+        """
+        secciones = defaultdict(lambda: {"notas": [], "porcentaje": 0.0})
+
+        for calificacion, id_seccion, porcentaje in filas:
+            secciones[id_seccion]["notas"].append(float(calificacion))
+            secciones[id_seccion]["porcentaje"] = float(porcentaje)
+
+        suma_ponderada = 0.0
+        suma_porcentajes = 0.0
+
+        for info in secciones.values():
+            nota_seccion = sum(info["notas"]) / len(info["notas"])
+            suma_ponderada += nota_seccion * info["porcentaje"]
+            suma_porcentajes += info["porcentaje"]
+
+        if suma_porcentajes <= 0:
             return None
 
-        # 3. CORRECCIÓN H10: Lógica matemática para promedio ponderado por estudiante
-        # Estructura: {id_estudiante: {id_seccion: {'notas': [], 'porcentaje': float}}}
-        datos_estudiantes = defaultdict(lambda: defaultdict(lambda: {'notas': [], 'porcentaje': 0.0}))
+        return round(suma_ponderada / suma_porcentajes, 2)
 
-        for id_est, calif, id_sec, porc in resultados:
-            if calif is not None:
-                datos_estudiantes[id_est][id_sec]['notas'].append(float(calif))
-                datos_estudiantes[id_est][id_sec]['porcentaje'] = float(porc)
+    def obtener_promedio_estudiante_materia(
+        self,
+        id_estudiante: int,
+        id_materia: int,
+        id_periodo: int,
+        id_docente: int | None = None,
+    ) -> Optional[float]:
+        filas = self._consultar_filas_materia(
+            id_materia, id_periodo, id_estudiante=id_estudiante, id_docente=id_docente
+        )
+        return self._promedio_ponderado([(calif, id_sec, porc) for _, calif, id_sec, porc in filas])
 
-        promedios_estudiantes = []
+    def obtener_promedios_por_estudiante_materia(
+        self, id_materia: int, id_docente: int | None, id_periodo: int
+    ) -> dict[int, float]:
+        """
+        Promedio ponderado de cada estudiante de la materia (HU8).
 
-        # 4. Calcular el promedio ponderado exacto de cada estudiante
-        for id_est, secciones in datos_estudiantes.items():
-            suma_ponderada = 0.0
-            suma_porcentajes = 0.0
-            
-            for id_sec, info in secciones.items():
-                if info['notas']:
-                    # Primero se promedian las actividades dentro de un mismo corte/sección
-                    nota_seccion = sum(info['notas']) / len(info['notas'])
-                    porcentaje = info['porcentaje']
-                    
-                    suma_ponderada += nota_seccion * porcentaje
-                    suma_porcentajes += porcentaje
-            
-            # Promedio definitivo del estudiante 
-            # Fórmula: Σ(nota_seccion * porcentaje) / Σ(porcentaje)
-            if suma_porcentajes > 0:
-                promedio_estudiante = suma_ponderada / suma_porcentajes
-                promedios_estudiantes.append(promedio_estudiante)
+        Es también la fuente del promedio grupal, para que el valor que el docente ve
+        por estudiante y el agregado del curso salgan del mismo cálculo y no puedan
+        divergir.
+        """
+        filas = self._consultar_filas_materia(id_materia, id_periodo, id_docente=id_docente)
 
-        # 5. Calcular el promedio grupal
-        if not promedios_estudiantes:
+        por_estudiante = defaultdict(list)
+        for id_estudiante, calificacion, id_seccion, porcentaje in filas:
+            por_estudiante[id_estudiante].append((calificacion, id_seccion, porcentaje))
+
+        promedios = {}
+        for id_estudiante, filas_estudiante in por_estudiante.items():
+            promedio = self._promedio_ponderado(filas_estudiante)
+            if promedio is not None:
+                promedios[id_estudiante] = promedio
+
+        return promedios
+
+    def obtener_promedio_grupal_materia(
+        self, id_materia: int, id_docente: int | None, id_periodo: int
+    ) -> Optional[float]:
+        """
+        Media de los promedios individuales, no de las notas sueltas: quien tiene 10
+        actividades no debe pesar más que quien tiene 2 (H10).
+
+        Promedia los valores ya redondeados que se le muestran al docente, para que
+        sumar la columna de promedios y dividir dé exactamente el promedio grupal de
+        la pantalla.
+        """
+        promedios = self.obtener_promedios_por_estudiante_materia(id_materia, id_docente, id_periodo)
+
+        if not promedios:
             return None
 
-        # El promedio grupal es la media de los promedios individuales
-        promedio_grupal = sum(promedios_estudiantes) / len(promedios_estudiantes)
-        return round(promedio_grupal, 2)
+        return round(sum(promedios.values()) / len(promedios), 2)
 
     def borrar_por_actividad(self, id_actividad: int):
         # Borra todas las notas asociadas a una actividad con una sola sentencia.
