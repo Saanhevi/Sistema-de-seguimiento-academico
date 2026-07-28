@@ -149,12 +149,6 @@ class AsistenciaService:
         try:
             dia = self._validar_dia_asistible_pertenece_docente(id_dia, usuario)
 
-            # Antes de actualizar, contamos ausencias por estudiante
-            ausencias_antes = {}
-            for id_est in estudiantes_ids:
-                historial = self.asistencia_repository.listar_historial_estudiante(id_est)
-                ausencias_antes[id_est] = sum(1 for h in historial if h.estado == "Ausente")
-
             for registro in lista_asistencia:
                 filas = self.asistencia_repository.actualizar_registro_asistencia(
                     id_dia,
